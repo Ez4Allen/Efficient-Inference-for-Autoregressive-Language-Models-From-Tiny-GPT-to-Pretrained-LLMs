@@ -1,0 +1,13 @@
+workload:
+  num_requests: 100
+  arrival_pattern: poisson
+  prompt_length_distribution: mixed
+  output_length_distribution: mixed
+
+system:
+  num_prefill_workers: 1
+  num_decode_workers: 1
+  kv_transfer_overhead_ms: 0.0
+
+policy:
+  name: fcfs
