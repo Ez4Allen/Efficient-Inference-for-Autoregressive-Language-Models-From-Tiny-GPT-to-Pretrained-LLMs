@@ -1,7 +1,7 @@
-
 from __future__ import annotations
 
 from dataclasses import dataclass
+from time import perf_counter
 
 import torch
 from transformers.modeling_utils import PreTrainedModel
@@ -9,13 +9,17 @@ from transformers.modeling_utils import PreTrainedModel
 
 @dataclass
 class AutoregressiveOutput:
-    """
-    Output produced by autoregressive decoding.
-    """
-
     output_ids: torch.Tensor
     generated_token_ids: torch.Tensor
     target_forward_calls: int
+    prefill_time_seconds: float
+    decode_times_seconds: list[float]
+    total_time_seconds: float
+
+
+def _synchronize_if_needed(device: torch.device) -> None:
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
 
 
 @torch.inference_mode()
@@ -30,24 +34,6 @@ def greedy_decode(
 
     The first forward pass processes the complete prompt and creates
     the KV cache. Each later forward pass processes only the newest token.
-
-    Args:
-        model:
-            Hugging Face causal language model.
-
-        input_ids:
-            Prompt token IDs with shape:
-            [batch_size, prompt_length]
-
-        max_new_tokens:
-            Maximum number of new tokens to generate.
-
-        eos_token_id:
-            Optional end-of-sequence token ID.
-
-    Returns:
-        AutoregressiveOutput containing the complete sequence,
-        generated token IDs, and target forward-call count.
     """
 
     if max_new_tokens <= 0:
@@ -64,19 +50,36 @@ def greedy_decode(
     past_key_values = None
     target_forward_calls = 0
 
-    for _ in range(max_new_tokens):
+    prefill_time_seconds = 0.0
+    decode_times_seconds: list[float] = []
+
+    device = input_ids.device
+
+    _synchronize_if_needed(device)
+    total_start = perf_counter()
+
+    for step in range(max_new_tokens):
         if past_key_values is None:
-            # Prefill: process the complete prompt.
             model_input_ids = generated_ids
         else:
-            # Decode: only process the newest token.
             model_input_ids = generated_ids[:, -1:]
+
+        _synchronize_if_needed(device)
+        forward_start = perf_counter()
 
         outputs = model(
             input_ids=model_input_ids,
             past_key_values=past_key_values,
             use_cache=True,
         )
+
+        _synchronize_if_needed(device)
+        forward_elapsed = perf_counter() - forward_start
+
+        if step == 0:
+            prefill_time_seconds = forward_elapsed
+        else:
+            decode_times_seconds.append(forward_elapsed)
 
         target_forward_calls += 1
 
@@ -101,6 +104,9 @@ def greedy_decode(
             if torch.all(next_token_id == eos_token_id):
                 break
 
+    _synchronize_if_needed(device)
+    total_time_seconds = perf_counter() - total_start
+
     generated_token_ids = torch.cat(
         new_token_ids,
         dim=-1,
@@ -110,4 +116,7 @@ def greedy_decode(
         output_ids=generated_ids,
         generated_token_ids=generated_token_ids,
         target_forward_calls=target_forward_calls,
+        prefill_time_seconds=prefill_time_seconds,
+        decode_times_seconds=decode_times_seconds,
+        total_time_seconds=total_time_seconds,
     )
