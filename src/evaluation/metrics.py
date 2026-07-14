@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.decoding.autoregressive import AutoregressiveOutput
+from src.inference.autoregressive import AutoregressiveOutput
 
 
 @dataclass

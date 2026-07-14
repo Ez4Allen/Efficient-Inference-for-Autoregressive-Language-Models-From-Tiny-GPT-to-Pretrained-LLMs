@@ -2,13 +2,13 @@ import os
 import torch
 from torch.utils.data import DataLoader
 
-from src.tiny_lm.dataset import (
+from src.data.tiny_lm_dataset import (
     TextDataset,
     create_train_val_split,
     load_text_file,
 )
-from src.tiny_lm.tokenizer import CharTokenizer
-from src.tiny_lm.model import TinyGPT
+from src.models.tiny_lm.tokenizer import CharTokenizer
+from src.models.tiny_lm.model import TinyGPT
 
 
 def evaluate(model, data_loader, device, max_batches=20):

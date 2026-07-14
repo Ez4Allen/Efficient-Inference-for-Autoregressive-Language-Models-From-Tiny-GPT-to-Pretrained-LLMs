@@ -34,3 +34,5 @@ logs/
 
 results/
 !results/.gitkeep
+/checkpoints
+/checkpoints/

@@ -1,8 +1,8 @@
 import argparse
 import torch
 
-from src.tiny_lm.model import TinyGPT
-from src.tiny_lm.tokenizer import CharTokenizer
+from src.models.tiny_lm.model import TinyGPT
+from src.models.tiny_lm.tokenizer import CharTokenizer
 
 
 def load_model_and_tokenizer(checkpoint_path, tokenizer_path, device):

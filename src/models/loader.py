@@ -143,7 +143,59 @@ def load_causal_lm(
         dtype=resolved_dtype,
     )
 
+@dataclass
+class SpeculativeModelBundle:
+    draft: ModelBundle
+    target: ModelBundle
 
+
+def _validate_tokenizer_compatibility(
+    draft: ModelBundle,
+    target: ModelBundle,
+) -> None:
+    draft_vocab = draft.tokenizer.get_vocab()
+    target_vocab = target.tokenizer.get_vocab()
+
+    if draft_vocab != target_vocab:
+        raise ValueError(
+            "Draft and target tokenizers do not have identical vocabularies."
+        )
+
+    if draft.tokenizer.eos_token_id != target.tokenizer.eos_token_id:
+        raise ValueError(
+            "Draft and target tokenizers use different EOS token IDs."
+        )
+
+
+def load_speculative_models(
+    draft_model_name: str,
+    target_model_name: str,
+    device: str | torch.device | None = None,
+    dtype: str | torch.dtype | None = None,
+) -> SpeculativeModelBundle:
+    draft = load_causal_lm(
+        model_name=draft_model_name,
+        device=device,
+        dtype=dtype,
+    )
+
+    target = load_causal_lm(
+        model_name=target_model_name,
+        device=device,
+        dtype=dtype,
+    )
+
+    _validate_tokenizer_compatibility(
+        draft=draft,
+        target=target,
+    )
+
+    return SpeculativeModelBundle(
+        draft=draft,
+        target=target,
+    )
+
+    
 def get_parameter_count(model: PreTrainedModel) -> int:
     """
     Return the total number of model parameters.
