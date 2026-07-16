@@ -40,3 +40,6 @@ results/
 # Track small Terraria datasets
 !data/terraria/
 !data/terraria/*.jsonl
+
+# Track the shared SFT format example
+!data/sft_example.jsonl
