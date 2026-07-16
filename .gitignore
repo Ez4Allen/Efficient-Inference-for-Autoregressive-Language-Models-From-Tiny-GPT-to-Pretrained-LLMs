@@ -36,3 +36,7 @@ results/
 !results/.gitkeep
 /checkpoints
 /checkpoints/
+
+# Track small Terraria datasets
+!data/terraria/
+!data/terraria/*.jsonl
