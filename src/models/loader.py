@@ -1,7 +1,7 @@
-
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -11,10 +11,6 @@ from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 @dataclass
 class ModelBundle:
-    """
-    A container for the objects required during inference.
-    """
-
     model_name: str
     model: PreTrainedModel
     tokenizer: PreTrainedTokenizerBase
@@ -22,30 +18,31 @@ class ModelBundle:
     dtype: torch.dtype
 
 
+@dataclass
+class SpeculativeModelBundle:
+    draft: ModelBundle
+    target: ModelBundle
+
+
 def resolve_device(
     device: str | torch.device | None = None,
 ) -> torch.device:
     """
-    Resolve the device used for inference.
-
-    If no device is specified, CUDA is used when available;
-    otherwise, CPU is used.
+    Use the requested device, or select CUDA automatically when available.
     """
 
-    if device is not None:
-        resolved_device = torch.device(device)
+    resolved = torch.device(
+        device
+        if device is not None
+        else "cuda" if torch.cuda.is_available() else "cpu"
+    )
 
-        if resolved_device.type == "cuda" and not torch.cuda.is_available():
-            raise RuntimeError(
-                "CUDA was requested, but torch.cuda.is_available() is False."
-            )
+    if resolved.type == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError(
+            "CUDA was requested, but CUDA is not available."
+        )
 
-        return resolved_device
-
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-
-    return torch.device("cpu")
+    return resolved
 
 
 def resolve_dtype(
@@ -53,139 +50,162 @@ def resolve_dtype(
     dtype: torch.dtype | None = None,
 ) -> torch.dtype:
     """
-    Resolve the numerical precision used to load the model.
-
-    CUDA:
-        BF16 when supported, otherwise FP16.
-
-    CPU:
-        FP32 for compatibility.
+    Select BF16/FP16 on CUDA and FP32 on CPU unless explicitly specified.
     """
 
     if dtype is not None:
         return dtype
 
     if device.type == "cuda":
-        if torch.cuda.is_bf16_supported():
-            return torch.bfloat16
-
-        return torch.float16
+        return (
+            torch.bfloat16
+            if torch.cuda.is_bf16_supported()
+            else torch.float16
+        )
 
     return torch.float32
 
 
 def load_causal_lm(
-    model_name: str = "openai-community/gpt2",
+    model_name: str | Path = "openai-community/gpt2",
     device: str | torch.device | None = None,
     dtype: torch.dtype | None = None,
     trust_remote_code: bool = False,
+    local_files_only: bool = False,
 ) -> ModelBundle:
     """
-    Load a Hugging Face tokenizer and causal language model.
-
-    Args:
-        model_name:
-            Hugging Face model identifier.
-
-        device:
-            Device used for inference, such as "cuda" or "cpu".
-            When omitted, the device is selected automatically.
-
-        dtype:
-            Model precision. When omitted, it is selected automatically.
-
-        trust_remote_code:
-            Whether custom code from the model repository may be executed.
-
-    Returns:
-        ModelBundle containing the model, tokenizer, device, and dtype.
+    Load a causal language model from Hugging Face or a local directory.
     """
 
+    model_name = str(model_name)
     resolved_device = resolve_device(device)
-    resolved_dtype = resolve_dtype(
-        device=resolved_device,
-        dtype=dtype,
-    )
+    resolved_dtype = resolve_dtype(resolved_device, dtype)
+
+    if local_files_only:
+        model_path = Path(model_name)
+
+        if not model_path.is_dir():
+            raise FileNotFoundError(
+                f"Local model directory not found: {model_path}"
+            )
 
     print(f"Loading model: {model_name}")
-    print(f"Using device: {resolved_device}")
-    print(f"Using dtype: {resolved_dtype}")
+    print(f"Device: {resolved_device}")
+    print(f"Dtype: {resolved_dtype}")
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
         trust_remote_code=trust_remote_code,
+        local_files_only=local_files_only,
     )
 
-    # GPT-2 has no dedicated padding token.
-    # Reusing EOS as PAD is sufficient for the current inference experiments.
     if tokenizer.pad_token_id is None:
         if tokenizer.eos_token_id is None:
             raise ValueError(
-                "The tokenizer has neither a pad token nor an EOS token."
+                "Tokenizer has neither a PAD token nor an EOS token."
             )
 
         tokenizer.pad_token = tokenizer.eos_token
 
+    model_kwargs = {
+        "dtype": resolved_dtype,
+        "trust_remote_code": trust_remote_code,
+        "local_files_only": local_files_only,
+        "low_cpu_mem_usage": True,
+    }
+
+    if resolved_device.type == "cuda":
+        device_index = (
+            resolved_device.index
+            if resolved_device.index is not None
+            else torch.cuda.current_device()
+        )
+
+        model_kwargs["device_map"] = {
+            "": device_index,
+        }
+
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        dtype=resolved_dtype,
-        trust_remote_code=trust_remote_code,
+        **model_kwargs,
     )
 
-    model.to(resolved_device)
+    if resolved_device.type == "cpu":
+        model.to(resolved_device)
+
     model.eval()
+
+    actual_parameter = next(model.parameters())
 
     return ModelBundle(
         model_name=model_name,
         model=model,
         tokenizer=tokenizer,
-        device=resolved_device,
-        dtype=resolved_dtype,
+        device=actual_parameter.device,
+        dtype=actual_parameter.dtype,
     )
 
-@dataclass
-class SpeculativeModelBundle:
-    draft: ModelBundle
-    target: ModelBundle
 
-
-def _validate_tokenizer_compatibility(
+def validate_tokenizer_compatibility(
     draft: ModelBundle,
     target: ModelBundle,
 ) -> None:
-    draft_vocab = draft.tokenizer.get_vocab()
-    target_vocab = target.tokenizer.get_vocab()
+    """
+    Verify that draft and target models use identical token IDs.
+    """
 
-    if draft_vocab != target_vocab:
+    if draft.tokenizer.get_vocab() != target.tokenizer.get_vocab():
         raise ValueError(
-            "Draft and target tokenizers do not have identical vocabularies."
+            "Draft and target tokenizers have different vocabularies."
         )
 
-    if draft.tokenizer.eos_token_id != target.tokenizer.eos_token_id:
-        raise ValueError(
-            "Draft and target tokenizers use different EOS token IDs."
-        )
+    token_attributes = [
+        "bos_token_id",
+        "eos_token_id",
+        "pad_token_id",
+        "unk_token_id",
+    ]
+
+    for attribute in token_attributes:
+        draft_id = getattr(draft.tokenizer, attribute)
+        target_id = getattr(target.tokenizer, attribute)
+
+        if draft_id != target_id:
+            raise ValueError(
+                f"Tokenizer mismatch for {attribute}: "
+                f"{draft_id} != {target_id}"
+            )
 
 
 def load_speculative_models(
-    draft_model_name: str,
-    target_model_name: str,
+    draft_model_name: str | Path,
+    target_model_name: str | Path,
     device: str | torch.device | None = None,
-    dtype: str | torch.dtype | None = None,
+    dtype: torch.dtype | None = None,
+    trust_remote_code: bool = False,
+    local_files_only: bool = False,
 ) -> SpeculativeModelBundle:
+    """
+    Load draft and target models for speculative decoding.
+    """
+
     draft = load_causal_lm(
         model_name=draft_model_name,
         device=device,
         dtype=dtype,
+        trust_remote_code=trust_remote_code,
+        local_files_only=local_files_only,
     )
 
     target = load_causal_lm(
         model_name=target_model_name,
         device=device,
         dtype=dtype,
+        trust_remote_code=trust_remote_code,
+        local_files_only=local_files_only,
     )
 
-    _validate_tokenizer_compatibility(
+    validate_tokenizer_compatibility(
         draft=draft,
         target=target,
     )
@@ -195,103 +215,29 @@ def load_speculative_models(
         target=target,
     )
 
-    
-def get_parameter_count(model: PreTrainedModel) -> int:
-    """
-    Return the total number of model parameters.
-    """
 
-    return sum(parameter.numel() for parameter in model.parameters())
-
-
-def get_parameter_memory_bytes(model: PreTrainedModel) -> int:
-    """
-    Return the approximate memory occupied by model parameters.
-    """
-
+def get_parameter_count(
+    model: PreTrainedModel,
+) -> int:
     return sum(
-        parameter.numel() * parameter.element_size()
+        parameter.numel()
         for parameter in model.parameters()
     )
 
 
-def print_model_info(bundle: ModelBundle) -> None:
+def print_model_info(
+    bundle: ModelBundle,
+) -> None:
     """
-    Print basic information about the loaded model and tokenizer.
+    Print a compact model summary.
     """
 
-    model = bundle.model
-    tokenizer = bundle.tokenizer
-    config = model.config
-
-    total_parameters = get_parameter_count(model)
-    parameter_memory = get_parameter_memory_bytes(model)
-
-    number_of_layers = getattr(
-        config,
-        "num_hidden_layers",
-        getattr(config, "n_layer", None),
-    )
-
-    number_of_heads = getattr(
-        config,
-        "num_attention_heads",
-        getattr(config, "n_head", None),
-    )
-
-    hidden_size = getattr(
-        config,
-        "hidden_size",
-        getattr(config, "n_embd", None),
-    )
-
-    max_positions = getattr(
-        config,
-        "max_position_embeddings",
-        getattr(config, "n_positions", None),
-    )
+    parameter_count = get_parameter_count(bundle.model)
 
     print("\n=== Model Information ===")
-    print(f"Model name: {bundle.model_name}")
-    print(f"Model class: {model.__class__.__name__}")
-    print(f"Tokenizer class: {tokenizer.__class__.__name__}")
+    print(f"Model: {bundle.model_name}")
+    print(f"Class: {bundle.model.__class__.__name__}")
     print(f"Device: {bundle.device}")
     print(f"Dtype: {bundle.dtype}")
-    print(f"Vocabulary size: {tokenizer.vocab_size:,}")
-    print(f"Total parameters: {total_parameters:,}")
-    print(
-        "Approximate parameter memory: "
-        f"{parameter_memory / 1024**3:.3f} GiB"
-    )
-
-    if number_of_layers is not None:
-        print(f"Number of layers: {number_of_layers}")
-
-    if number_of_heads is not None:
-        print(f"Number of attention heads: {number_of_heads}")
-
-    if hidden_size is not None:
-        print(f"Hidden size: {hidden_size}")
-
-    if max_positions is not None:
-        print(f"Maximum positions: {max_positions}")
-
-
-def print_device_info() -> None:
-    """
-    Print the current CUDA environment.
-    """
-
-    print("=== Device Information ===")
-    print(f"CUDA available: {torch.cuda.is_available()}")
-
-    if not torch.cuda.is_available():
-        print("Device: CPU")
-        return
-
-    device_index = torch.cuda.current_device()
-    properties = torch.cuda.get_device_properties(device_index)
-
-    print(f"GPU: {torch.cuda.get_device_name(device_index)}")
-    print(f"PyTorch CUDA version: {torch.version.cuda}")
-    print(f"Total VRAM: {properties.total_memory / 1024**3:.2f} GiB")
+    print(f"Parameters: {parameter_count:,}")
+    print(f"Vocabulary: {len(bundle.tokenizer):,}")
