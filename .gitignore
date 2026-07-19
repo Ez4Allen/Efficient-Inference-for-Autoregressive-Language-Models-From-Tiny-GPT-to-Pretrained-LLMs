@@ -57,3 +57,7 @@ data/terraria/catalog_backup_*/
 # Keep the small curated Terraria knowledge files
 !data/terraria/structured/
 !data/terraria/structured/*.jsonl
+
+# Keep one cleaned Terraria catalog snapshot in Git
+!data/terraria/catalog/cleaned/
+!data/terraria/catalog/cleaned/*.jsonl
