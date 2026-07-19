@@ -1,0 +1,18 @@
+{
+  "input_path": "/content/llm_project/data/terraria/catalog/normalized/Drops.jsonl",
+  "output_path": "/content/llm_project/data/terraria/catalog/cleaned/Drops.jsonl",
+  "total_records": 3144,
+  "ok_records": 3135,
+  "partial_records": 9,
+  "unique_source_catalog_ids": 3144,
+  "rate_parsed_records": 3135,
+  "quantity_parsed_records": 3144,
+  "inferred_quantity_records": 106,
+  "source_type_counts": {
+    "container_or_other": 1694,
+    "npc": 1450
+  },
+  "warning_counts": {
+    "missing_rate": 9
+  }
+}

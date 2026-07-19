@@ -1,0 +1,13 @@
+{
+  "imported_at": "2026-07-19T20:52:39.136880+00:00",
+  "api_url": "https://terraria.wiki.gg/api.php",
+  "all_tables": true,
+  "table_counts": {
+    "Drops": 3144,
+    "Items": 6283,
+    "NPCs": 770,
+    "Recipes": 4221
+  },
+  "grouped_recipe_entities": 3409,
+  "failures": {}
+}

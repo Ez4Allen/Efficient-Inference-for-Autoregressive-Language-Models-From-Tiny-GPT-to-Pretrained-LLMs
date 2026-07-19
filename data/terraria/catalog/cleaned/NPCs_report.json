@@ -1,0 +1,9 @@
+{
+  "input_path": "/content/llm_project/data/terraria/catalog/normalized/NPCs.jsonl",
+  "output_path": "/content/llm_project/data/terraria/catalog/cleaned/NPCs.jsonl",
+  "total_records": 770,
+  "ok_records": 770,
+  "partial_records": 0,
+  "unique_source_catalog_ids": 770,
+  "warning_counts": {}
+}

@@ -1,0 +1,87 @@
+{
+  "items_path": "/content/llm_project/data/terraria/catalog/cleaned/Items.jsonl",
+  "npcs_path": "/content/llm_project/data/terraria/catalog/cleaned/NPCs.jsonl",
+  "drops_path": "/content/llm_project/data/terraria/catalog/cleaned/Drops.jsonl",
+  "output_path": "/content/llm_project/data/terraria/catalog/linked/Drops.jsonl",
+  "item_records": 6283,
+  "npc_records": 770,
+  "drop_records": 3144,
+  "complete_records": 3134,
+  "partial_records": 10,
+  "item_status_counts": {
+    "linked": 3131,
+    "unresolved": 8,
+    "group": 5
+  },
+  "item_method_counts": {
+    "exact_name": 3109,
+    "qualified_alias": 14,
+    "no_safe_item_match": 8,
+    "known_item_group": 5,
+    "exact_name_catalog_rule": 5,
+    "qualified_alias_disambiguation": 3
+  },
+  "item_kind_counts": {
+    "item": 3131,
+    "legacy_or_missing_item": 8,
+    "item_group": 5
+  },
+  "source_status_counts": {
+    "classified": 1694,
+    "linked": 1368,
+    "group": 80,
+    "unresolved": 2
+  },
+  "source_method_counts": {
+    "source_type_classification": 1694,
+    "exact_name_and_id": 1144,
+    "bonus_drop_alias": 189,
+    "same_name_npc_family": 60,
+    "exact_name": 35,
+    "known_world_object": 12,
+    "known_composite_npc_group": 8,
+    "no_safe_npc_match": 2
+  },
+  "source_kind_counts": {
+    "container_or_other": 1694,
+    "npc": 1368,
+    "npc_family": 60,
+    "world_object": 12,
+    "composite_npc_group": 8,
+    "legacy_or_missing_npc": 2
+  },
+  "item_usable_coverage_percent": 99.7455,
+  "source_usable_coverage_percent": 99.9364,
+  "complete_record_coverage_percent": 99.6819,
+  "unresolved_item_counts": {
+    "Suspicious Looking Apple": 4,
+    "Suspicious Looking Egg": 1,
+    "Shiren Hat": 1,
+    "Wolf Fang": 1,
+    "Brain": 1
+  },
+  "ambiguous_item_counts": {},
+  "item_group_counts": {
+    "Golden furniture": 5
+  },
+  "unresolved_source_counts": {
+    "Mythical Wyvern": 2
+  },
+  "source_group_counts": {
+    "Wall of Flesh": 16,
+    "Eater of Worlds": 12,
+    "The Twins": 7,
+    "Pigron": 6,
+    "Shadow Orb": 6,
+    "Crimson Heart": 6,
+    "Skeletron": 6,
+    "Salamander": 4,
+    "Crawdad": 4,
+    "Giant Shelly": 4,
+    "Blood Crawler": 3,
+    "Black Recluse": 3,
+    "Sand Poacher": 1,
+    "Wall Creeper": 1,
+    "Mechdusa": 1
+  }
+}

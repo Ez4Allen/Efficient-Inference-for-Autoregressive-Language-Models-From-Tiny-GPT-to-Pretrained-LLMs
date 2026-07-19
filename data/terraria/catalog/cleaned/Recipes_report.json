@@ -1,0 +1,27 @@
+{
+  "input_path": "/content/llm_project/data/terraria/catalog/normalized/recipes_grouped.jsonl",
+  "output_path": "/content/llm_project/data/terraria/catalog/cleaned/Recipes.jsonl",
+  "total_records": 3409,
+  "ok_records": 3409,
+  "partial_records": 0,
+  "unique_source_catalog_ids": 3409,
+  "total_variants": 4221,
+  "unique_variant_ids": 4221,
+  "current_variants": 3905,
+  "legacy_variants": 316,
+  "total_ingredient_entries": 6959,
+  "records_with_current_recipe": 3376,
+  "records_with_legacy_recipe": 297,
+  "mixed_current_legacy_records": 264,
+  "legacy_only_records": 33,
+  "missing_result_item_id_records": 5,
+  "result_id_status_counts": {
+    "canonical": 3400,
+    "missing": 5,
+    "multiple": 3,
+    "special": 1
+  },
+  "versioned_variants": 610,
+  "note_variant_records": 16,
+  "warning_counts": {}
+}

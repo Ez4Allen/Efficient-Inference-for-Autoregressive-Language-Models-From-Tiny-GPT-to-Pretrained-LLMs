@@ -1,0 +1,13 @@
+{
+  "input_path": "/content/llm_project/data/terraria/catalog/normalized/Items.jsonl",
+  "output_path": "/content/llm_project/data/terraria/catalog/cleaned/Items.jsonl",
+  "total_records": 6283,
+  "ok_records": 6283,
+  "partial_records": 0,
+  "unique_source_catalog_ids": 6283,
+  "missing_item_id_records": 204,
+  "buy_price_parsed_records": 790,
+  "sell_price_parsed_records": 5388,
+  "platform_variant_records": 70,
+  "warning_counts": {}
+}

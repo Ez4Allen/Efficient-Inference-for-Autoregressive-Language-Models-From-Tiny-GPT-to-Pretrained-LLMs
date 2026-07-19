@@ -1,0 +1,79 @@
+{
+  "status": "passed",
+  "record_counts": {
+    "items": 6283,
+    "npcs": 770,
+    "cleaned_recipes": 3409,
+    "linked_recipes": 3409,
+    "cleaned_drops": 3144,
+    "linked_drops": 3144
+  },
+  "identity_parity": {
+    "recipes": true,
+    "drops": true
+  },
+  "recipe_counts": {
+    "variants": 4221,
+    "ingredients": 6959,
+    "result_statuses": {
+      "linked": 3317,
+      "unresolved": 92
+    },
+    "ingredient_statuses": {
+      "linked": 6537,
+      "group": 377,
+      "unresolved": 45
+    },
+    "linking_statuses": {
+      "complete": 3304,
+      "partial": 105
+    },
+    "parse_statuses": {
+      "ok": 3409
+    }
+  },
+  "drop_counts": {
+    "item_statuses": {
+      "linked": 3131,
+      "unresolved": 8,
+      "group": 5
+    },
+    "source_statuses": {
+      "linked": 1368,
+      "unresolved": 2,
+      "classified": 1694,
+      "group": 80
+    },
+    "linking_statuses": {
+      "complete": 3134,
+      "partial": 10
+    },
+    "parse_statuses": {
+      "ok": 3135,
+      "partial": 9
+    }
+  },
+  "reference_integrity": {
+    "resolved_item_references": 12985,
+    "resolved_npc_references": 1368,
+    "resolved_references_total": 14353,
+    "validated_item_candidates": 40,
+    "validated_npc_candidates": 364,
+    "dangling_item_references": 0,
+    "dangling_npc_references": 0,
+    "mismatched_item_references": 0,
+    "mismatched_npc_references": 0
+  },
+  "referenced_entities": {
+    "unique_items": 4556,
+    "unique_npcs": 300
+  },
+  "file_sha256": {
+    "Items.jsonl": "78827346a70bde0cf579f61b3f881888a614843dce807e0024e70812d506d1eb",
+    "NPCs.jsonl": "aab3d37dfd3f043d3b3b0aa9131d314973d790b81f18225975e9cba1ab02477a",
+    "cleaned/Recipes.jsonl": "c92e2cc0545c1ee732832b555db844eaabb2602026f09e2e61f9f088bc623ce1",
+    "linked/Recipes.jsonl": "bc71ca42cfca2e829d8fd29eab5459833e3a2e5a0f0808a97df832f78b23da34",
+    "cleaned/Drops.jsonl": "4d4d7ed1c0a8542d11bc1c7a9ad560c7c6446797ef9c3df6efbbb7655edb3d22",
+    "linked/Drops.jsonl": "72f9d529952e59caa78a3831f909d2b58648bd388317048b6a69067bee6de620"
+  }
+}

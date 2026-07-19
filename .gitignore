@@ -43,3 +43,17 @@ results/
 
 # Track the shared SFT format example
 !data/sft_example.jsonl
+
+# Terraria generated catalog artifacts
+# These files are reproducible from the import, cleaning,
+# linking and database-builder modules.
+data/terraria/catalog/*.sqlite3
+data/terraria/catalog/**/*.jsonl
+
+# Temporary migration and backup artifacts
+data/terraria/catalog_backup_*/
+*.bak
+
+# Keep the small curated Terraria knowledge files
+!data/terraria/structured/
+!data/terraria/structured/*.jsonl
