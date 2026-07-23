@@ -19,6 +19,7 @@ placeholders:
    - Referential-integrity audit
    - Compressed, indexed SQLite query database with FTS5
    - `TerrariaQueryStore` and `TerrariaFactService`
+   - Grounded `TerrariaAssistant` with bilingual routing, clarification, context, and CLI
    - One-command rebuild and integration tests
 
 ## Phase 1 — Tiny GPT baseline
@@ -56,20 +57,23 @@ Next experiments:
 - Quantized draft/target comparisons
 - CUDA profiler traces and kernel-level analysis
 
-## Phase 4 — Terraria knowledge system
+## Phase 4 — Terraria knowledge and grounded assistant
 
-**Status: implemented and integration-tested.**
+**Status: structured QA MVP implemented and integration-tested.**
 
 - Rebuild linked data and SQLite with `scripts/build_terraria_knowledge.py`
 - Query facts with `scripts/query_terraria.py`
-- Route natural-language intent into deterministic facts, then supply those facts to an LLM
+- Route English and Chinese natural-language questions into deterministic facts
+- Resolve common aliases and preserve same-name ambiguity
+- Render grounded answers with warnings, provenance, and LLM-ready context
+- Use the assistant through `scripts/chat_terraria.py`
 
 Next work:
 
-- Natural-language intent/entity parsing
-- Answer rendering with evidence-aware prompts
-- Evaluation set for factual exactness, ambiguity handling, and fallback behavior
-- Optional RAG layer for long-form strategy guides that are not suitable for structured tables
+- Add a document retriever for progression and mechanics questions that are not represented by structured tables
+- Evaluate route accuracy, retrieval recall, factual exactness, hallucination rate, and latency
+- Train an optional QLoRA answer model to follow retrieved evidence rather than memorize the catalog
+- Compare standard and speculative decoding on the grounded assistant workload
 
 ## Phase 5 — Evaluation and report
 

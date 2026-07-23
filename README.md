@@ -64,6 +64,34 @@ python scripts/query_terraria.py npc "Armored Skeleton" --npc-id 77
 returns compact fact packages with warnings and provenance suitable for an LLM
 or API layer.
 
+## Grounded Terraria assistant
+
+Natural-language routing and deterministic grounded rendering are available on
+top of the existing FactService:
+
+```python
+from src.assistant import TerrariaAssistant
+
+with TerrariaAssistant(auto_build=True) as assistant:
+    response = assistant.answer("How do I craft Night's Edge?")
+    print(response.answer)
+    print(response.evidence)
+```
+
+The first release supports Item, NPC, Recipe, reverse Recipe, Drop-source, and
+source-loot questions in English and Chinese. It returns clarification for
+same-name entities and refuses to invent facts for unknown entities.
+
+```bash
+python scripts/chat_terraria.py "Where can I get Beam Sword?"
+python scripts/chat_terraria.py "装甲骷髅掉什么？" --mode expert
+python scripts/chat_terraria.py "What is Terra Blade?" --json
+```
+
+`response.context.text` is an evidence-only prompt for an external LLM. A
+custom grounded generator can be injected while the deterministic renderer
+remains the fallback. See `docs/terraria_assistant.md`.
+
 ## Inference experiments
 
 The core decoding implementations are in:
@@ -149,6 +177,7 @@ project elsewhere.
 ```text
 configs/                     Experiment configurations
 scripts/                     Command-line entry points
+src/assistant/               Grounded Terraria routing, retrieval, context, and answers
 src/data/                    Dataset and prompt utilities
 src/evaluation/              Benchmark and evaluation code
 src/inference/               Autoregressive and speculative decoding

@@ -17,6 +17,9 @@ repository.
 - Compressed large JSON payloads in SQLite, reducing the generated database from roughly
   90 MB to roughly 39 MB while keeping transparent query compatibility.
 - Improved item/NPC ambiguity handling, fact-service warnings, FTS safety, and JSON decoding.
+- Added a grounded Terraria Assistant with bilingual intent routing, alias resolution,
+  ambiguity clarification, structured retrieval, evidence context, deterministic rendering,
+  a pluggable answer generator, and an interactive CLI.
 - Removed the obsolete hand-maintained Terraria structured-fact stack.
 - Added packaging metadata, dependency groups, portable documentation, and broad unit and
   integration coverage.
@@ -24,7 +27,8 @@ repository.
 ## Validation performed in this environment
 
 - Python bytecode compilation for `src`, `scripts`, and `tests`
-- Full `pytest` suite using deterministic toy models and the tracked Terraria snapshot
+- Full `pytest` suite using deterministic toy models, the tracked Terraria snapshot, and
+  end-to-end natural-language Assistant queries
 - Strict Terraria link/audit/SQLite rebuild
 - Serving-simulator CLI smoke run
 
