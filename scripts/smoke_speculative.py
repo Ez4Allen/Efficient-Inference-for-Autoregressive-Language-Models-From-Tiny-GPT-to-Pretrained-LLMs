@@ -7,7 +7,7 @@ from src.inference.autoregressive import greedy_decode
 from src.inference.speculative import greedy_speculative_decode
 
 
-PROJECT_ROOT = Path("/content/llm_project")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 DRAFT_MODEL_PATH = PROJECT_ROOT / "checkpoints" / "gpt2"
 TARGET_MODEL_PATH = PROJECT_ROOT / "checkpoints" / "gpt2-medium"
@@ -92,7 +92,8 @@ def main() -> None:
     models = load_speculative_models(
         draft_model_name=str(DRAFT_MODEL_PATH),
         target_model_name=str(TARGET_MODEL_PATH),
-        dtype="float32",
+        dtype=torch.float32,
+        local_files_only=True,
     )
 
     draft_model = models.draft.model

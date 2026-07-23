@@ -1,3 +1,5 @@
+experiment_name: tiny_gpt_shakespeare
+
 model:
   vocab_size: null
   context_length: 128
@@ -9,11 +11,18 @@ model:
 
 training:
   dataset: tiny_shakespeare
+  output_dir: results/tiny_gpt_shakespeare
   batch_size: 32
   learning_rate: 0.0005
+  weight_decay: 0.01
   max_steps: 1000
   eval_interval: 100
+  eval_batches: 20
+  val_ratio: 0.1
+  max_grad_norm: 1.0
+  seed: 42
   device: auto
+  num_workers: 0
 
 generation:
   max_new_tokens: 100

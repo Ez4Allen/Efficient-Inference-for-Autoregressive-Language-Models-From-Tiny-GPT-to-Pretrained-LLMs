@@ -1,12 +1,17 @@
 workload:
   num_requests: 100
   arrival_pattern: poisson
-  prompt_length_distribution: mixed
-  output_length_distribution: mixed
+  arrival_rate_per_second: 4.0
+  prompt_lengths: [64, 128, 256, 512, 1024]
+  output_lengths: [32, 64, 128, 256]
+  seed: 42
 
 system:
   num_prefill_workers: 1
   num_decode_workers: 1
+  prefill_tokens_per_second: 8000.0
+  decode_tokens_per_second: 80.0
+  prefill_fixed_overhead_ms: 2.0
   kv_transfer_overhead_ms: 0.0
 
 policy:

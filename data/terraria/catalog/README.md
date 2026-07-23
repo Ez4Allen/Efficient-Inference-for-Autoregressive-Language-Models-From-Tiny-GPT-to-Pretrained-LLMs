@@ -1,27 +1,32 @@
 # Terraria Catalog
 
-This directory contains reports and attribution metadata for the
-Terraria structured knowledge pipeline.
+This directory contains the tracked cleaned snapshot, source attribution,
+snapshot manifest, and lightweight build reports for the Terraria structured
+knowledge pipeline.
 
-The large catalog data layers are generated locally and are not stored
-in Git:
+## Tracked
+
+- `cleaned/*.jsonl` — the reproducible input snapshot.
+- `cleaned/*_report.json` — cleaning summaries.
+- `snapshot_manifest.json` — cleaned-file SHA-256 hashes and expected counts.
+- `linked/*_report.json` and `terraria_*_report.json` — lightweight reports.
+- `ATTRIBUTION.md` — upstream source attribution.
+
+## Generated locally
 
 - `raw/*.jsonl`
 - `normalized/*.jsonl`
-- `cleaned/*.jsonl`
-- `linked/*.jsonl`
+- `linked/Recipes.jsonl`
+- `linked/Drops.jsonl`
 - `terraria_catalog.sqlite3`
 - `terraria_query.sqlite3`
 
-The pipeline is reproducible from the tracked Python modules:
+Build the derived layers from the tracked cleaned snapshot:
 
-1. `scripts/import_terraria_catalog.py`
-2. `src/knowledge/cleaning/`
-3. `src/knowledge/linking/`
-4. `src/knowledge/catalog_database_builder.py`
+```bash
+python scripts/build_terraria_knowledge.py --quiet
+```
 
-Tracked JSON reports preserve record counts, integrity results, linkage
-coverage and source SHA-256 values.
-
-The small manually maintained facts under
-`data/terraria/structured/` are tracked in Git.
+For a full refresh from the wiki Cargo API, run
+`scripts/import_terraria_catalog.py`, rerun the cleaners, update the snapshot
+manifest, and then build with `--no-strict-snapshot` during validation.

@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .generation import sample_next_token
+
 
 class CausalSelfAttention(nn.Module):
     """
@@ -54,21 +56,23 @@ class CausalSelfAttention(nn.Module):
         k = k.view(B, T, self.n_head, self.head_dim).transpose(1, 2)
         v = v.view(B, T, self.n_head, self.head_dim).transpose(1, 2)
 
-        # Attention scores
-        # [B, n_head, T, head_dim] @ [B, n_head, head_dim, T]
-        # -> [B, n_head, T, T]
-        att = (q @ k.transpose(-2, -1)) / math.sqrt(self.head_dim)
-
-        # Apply causal mask
-        att = att.masked_fill(self.causal_mask[:, :, :T, :T] == 0, float("-inf"))
-
-        att = F.softmax(att, dim=-1)
-        att = self.attn_dropout(att)
-
-        # Weighted sum of values
-        # [B, n_head, T, T] @ [B, n_head, T, head_dim]
-        # -> [B, n_head, T, head_dim]
-        y = att @ v
+        if hasattr(F, "scaled_dot_product_attention"):
+            y = F.scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                dropout_p=self.attn_dropout.p if self.training else 0.0,
+                is_causal=True,
+            )
+        else:
+            att = (q @ k.transpose(-2, -1)) / math.sqrt(self.head_dim)
+            att = att.masked_fill(
+                self.causal_mask[:, :, :T, :T] == 0,
+                float("-inf"),
+            )
+            att = F.softmax(att, dim=-1)
+            att = self.attn_dropout(att)
+            y = att @ v
 
         # Merge heads
         # [B, n_head, T, head_dim] -> [B, T, C]
@@ -85,13 +89,17 @@ class FeedForward(nn.Module):
     Position-wise MLP used inside each Transformer block.
     """
 
-    def __init__(self, n_embd, dropout=0.1):
+    def __init__(self, n_embd, d_ff=None, dropout=0.1):
         super().__init__()
 
+        hidden_size = int(d_ff) if d_ff is not None else 4 * n_embd
+        if hidden_size < 1:
+            raise ValueError("d_ff must be positive.")
+
         self.net = nn.Sequential(
-            nn.Linear(n_embd, 4 * n_embd),
+            nn.Linear(n_embd, hidden_size),
             nn.GELU(),
-            nn.Linear(4 * n_embd, n_embd),
+            nn.Linear(hidden_size, n_embd),
             nn.Dropout(dropout),
         )
 
@@ -108,7 +116,7 @@ class TransformerBlock(nn.Module):
         x = x + mlp(layernorm(x))
     """
 
-    def __init__(self, n_embd, n_head, block_size, dropout=0.1):
+    def __init__(self, n_embd, n_head, block_size, d_ff=None, dropout=0.1):
         super().__init__()
 
         self.ln1 = nn.LayerNorm(n_embd)
@@ -120,7 +128,7 @@ class TransformerBlock(nn.Module):
         )
 
         self.ln2 = nn.LayerNorm(n_embd)
-        self.ffwd = FeedForward(n_embd=n_embd, dropout=dropout)
+        self.ffwd = FeedForward(n_embd=n_embd, d_ff=d_ff, dropout=dropout)
 
     def forward(self, x):
         x = x + self.attn(self.ln1(x))
@@ -147,6 +155,7 @@ class TinyGPT(nn.Module):
         n_layer=2,
         n_head=4,
         n_embd=128,
+        d_ff=None,
         dropout=0.1,
     ):
         super().__init__()
@@ -163,6 +172,7 @@ class TinyGPT(nn.Module):
                     n_embd=n_embd,
                     n_head=n_head,
                     block_size=block_size,
+                    d_ff=d_ff,
                     dropout=dropout,
                 )
                 for _ in range(n_layer)
@@ -216,30 +226,33 @@ class TinyGPT(nn.Module):
 
         return logits, loss
 
-    @torch.no_grad()
-    def generate(self, idx, max_new_tokens, temperature=1.0):
-        """
-        Autoregressively generate new tokens.
+    @torch.inference_mode()
+    def generate(
+        self,
+        idx,
+        max_new_tokens,
+        temperature=1.0,
+        top_k=None,
+        generator=None,
+    ):
+        """Autoregressively sample new tokens from a character-level prompt."""
 
-        idx shape:
-            [B, T]
-        """
+        if idx.ndim != 2:
+            raise ValueError("idx must have shape [batch_size, sequence_length].")
+        if max_new_tokens < 0:
+            raise ValueError("max_new_tokens cannot be negative.")
+        if idx.shape[1] < 1:
+            raise ValueError("idx must contain at least one prompt token.")
 
         for _ in range(max_new_tokens):
-            # If context is too long, crop to last block_size tokens
             idx_cond = idx[:, -self.block_size :]
-
             logits, _ = self(idx_cond)
-
-            # Take logits from the last position only
-            logits = logits[:, -1, :]  # [B, vocab_size]
-
-            logits = logits / temperature
-
-            probs = F.softmax(logits, dim=-1)
-
-            next_id = torch.multinomial(probs, num_samples=1)  # [B, 1]
-
+            next_id = sample_next_token(
+                logits[:, -1, :],
+                temperature=temperature,
+                top_k=top_k,
+                generator=generator,
+            )
             idx = torch.cat([idx, next_id], dim=1)
 
         return idx

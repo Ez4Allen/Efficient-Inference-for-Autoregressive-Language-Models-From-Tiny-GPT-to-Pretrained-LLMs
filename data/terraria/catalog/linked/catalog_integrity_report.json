@@ -75,5 +75,6 @@
     "linked/Recipes.jsonl": "bc71ca42cfca2e829d8fd29eab5459833e3a2e5a0f0808a97df832f78b23da34",
     "cleaned/Drops.jsonl": "4d4d7ed1c0a8542d11bc1c7a9ad560c7c6446797ef9c3df6efbbb7655edb3d22",
     "linked/Drops.jsonl": "72f9d529952e59caa78a3831f909d2b58648bd388317048b6a69067bee6de620"
-  }
+  },
+  "snapshot_expectations_validated": true
 }

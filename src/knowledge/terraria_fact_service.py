@@ -270,11 +270,18 @@ class TerrariaFactService:
     def item(
         self,
         name: str,
+        *,
+        item_id: int | None = None,
+        internal_name: str | None = None,
     ) -> dict[str, Any]:
+        """Return a compact but complete Item fact package."""
+
         self._ensure_open()
 
         result = self.store.get_item(
             name,
+            item_id=item_id,
+            internal_name=internal_name,
             include_record=True,
         )
 
@@ -285,22 +292,15 @@ class TerrariaFactService:
                 "query": name,
                 "facts": None,
                 "candidates": [],
-                "warnings": [
-                    "No exact Item catalog match."
-                ],
+                "warnings": ["No exact Item catalog match."],
                 "provenance": [],
             }
 
         if result["status"] == "ambiguous":
             candidates = [
-                self._candidate_summary(
-                    match,
-                    entity_type="item",
-                )
-                for match
-                in result["matches"]
+                self._candidate_summary(match, entity_type="item")
+                for match in result["matches"]
             ]
-
             return {
                 "status": "ambiguous",
                 "intent": "item",
@@ -308,50 +308,37 @@ class TerrariaFactService:
                 "facts": None,
                 "candidates": candidates,
                 "warnings": [
-                    "Multiple Items share this name."
+                    "Multiple Items share this name; provide item_id "
+                    "or internal_name to disambiguate."
                 ],
                 "provenance": [
                     {
                         "entity_type": "item",
-                        "source_catalog_id": (
-                            candidate[
-                                "source_catalog_id"
-                            ]
-                        ),
+                        "source_catalog_id": candidate["source_catalog_id"],
                     }
                     for candidate in candidates
                 ],
             }
 
         match = result["match"]
-        record = match.get(
-            "record",
-            {},
-        )
+        record = match.get("record", {})
 
         facts = {
             "name": match["name"],
             "item_id": match["item_id"],
-            "internal_name": (
-                match["internal_name"]
-            ),
-            "classification": record.get(
-                "classification",
-                {},
-            ),
-            "rarity": record.get(
-                "rarity"
-            ),
-            "stack": record.get(
-                "stack"
-            ),
-            "value": record.get(
-                "value",
-                {},
-            ),
-            "parse_status": (
-                match["parse_status"]
-            ),
+            "internal_name": match["internal_name"],
+            "classification": record.get("classification", {}),
+            "flags": record.get("flags", {}),
+            "inventory": record.get("inventory", {}),
+            "combat": record.get("combat", {}),
+            "tools": record.get("tools", {}),
+            "restoration": record.get("restoration", {}),
+            "placement": record.get("placement", {}),
+            "equipment": record.get("equipment", {}),
+            "effects": record.get("effects", {}),
+            "economy": record.get("economy", {}),
+            "tooltip": record.get("tooltip"),
+            "parse_status": match["parse_status"],
         }
 
         return {
@@ -364,11 +351,7 @@ class TerrariaFactService:
             "provenance": [
                 {
                     "entity_type": "item",
-                    "source_catalog_id": (
-                        match[
-                            "source_catalog_id"
-                        ]
-                    ),
+                    "source_catalog_id": match["source_catalog_id"],
                 }
             ],
         }
@@ -688,10 +671,25 @@ class TerrariaFactService:
                 }
             )
 
-        if recipe["linking_status"] == "partial":
+        selected_linking_status = (
+            "partial"
+            if any(
+                ingredient["link_status"] == "unresolved"
+                for variant in variants
+                for ingredient in variant["ingredients"]
+            )
+            else "complete"
+        )
+
+        if selected_linking_status == "partial":
             warnings.append(
-                "The complete recipe record contains "
-                "legacy or unresolved references."
+                "One or more selected recipe variants contain "
+                "unresolved references."
+            )
+        elif not preferred_only and recipe["linking_status"] == "partial":
+            warnings.append(
+                "The full recipe record contains legacy or unresolved "
+                "references outside the preferred variants."
             )
 
         facts = {
@@ -704,9 +702,8 @@ class TerrariaFactService:
             "preferred_only": preferred_only,
             "variant_count": len(variants),
             "variants": variants,
-            "linking_status": (
-                recipe["linking_status"]
-            ),
+            "linking_status": selected_linking_status,
+            "record_linking_status": recipe["linking_status"],
         }
 
         return {
@@ -733,15 +730,17 @@ class TerrariaFactService:
         self,
         item_name: str,
         *,
+        item_id: int | None = None,
+        internal_name: str | None = None,
         preferred_only: bool = True,
     ) -> dict[str, Any]:
         self._ensure_open()
 
         result = self.store.recipes_using_item(
             item_name,
-            preferred_only=(
-                preferred_only
-            ),
+            item_id=item_id,
+            internal_name=internal_name,
+            preferred_only=preferred_only,
         )
 
         status = result["status"]
@@ -948,6 +947,8 @@ class TerrariaFactService:
         self,
         item_name: str,
         *,
+        item_id: int | None = None,
+        internal_name: str | None = None,
         mode: str = "normal",
         include_partial: bool = True,
     ) -> dict[str, Any]:
@@ -955,10 +956,10 @@ class TerrariaFactService:
 
         result = self.store.drops_for_item(
             item_name,
+            item_id=item_id,
+            internal_name=internal_name,
             mode=mode,
-            include_partial=(
-                include_partial
-            ),
+            include_partial=include_partial,
             include_record=False,
         )
 
@@ -1218,8 +1219,13 @@ class TerrariaFactService:
             ),
         )
 
+        has_matches = any(
+            result[entity_type]
+            for entity_type in ("items", "npcs", "recipes")
+        )
+
         return {
-            "status": "found",
+            "status": "found" if has_matches else "not_found",
             "intent": "search",
             "query": query,
             "facts": result,
@@ -1274,6 +1280,8 @@ class TerrariaFactService:
         *,
         mode: str = "normal",
         npc_id: int | None = None,
+        item_id: int | None = None,
+        internal_name: str | None = None,
         preferred_only: bool = True,
         include_partial: bool = True,
         limit_per_type: int = 10,
@@ -1297,7 +1305,11 @@ class TerrariaFactService:
             )
 
         if normalized_intent == "item":
-            return self.item(entity)
+            return self.item(
+                entity,
+                item_id=item_id,
+                internal_name=internal_name,
+            )
 
         if normalized_intent == "npc":
             return self.npc(
@@ -1319,9 +1331,9 @@ class TerrariaFactService:
         ):
             return self.recipes_using_item(
                 entity,
-                preferred_only=(
-                    preferred_only
-                ),
+                item_id=item_id,
+                internal_name=internal_name,
+                preferred_only=preferred_only,
             )
 
         if (
@@ -1330,10 +1342,10 @@ class TerrariaFactService:
         ):
             return self.drops_for_item(
                 entity,
+                item_id=item_id,
+                internal_name=internal_name,
                 mode=mode,
-                include_partial=(
-                    include_partial
-                ),
+                include_partial=include_partial,
             )
 
         if (

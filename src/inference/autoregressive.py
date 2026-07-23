@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from time import perf_counter
+from typing import Any
 
 import torch
-from transformers.modeling_utils import PreTrainedModel
 
 
 @dataclass
@@ -24,7 +24,7 @@ def _synchronize_if_needed(device: torch.device) -> None:
 
 @torch.inference_mode()
 def greedy_decode(
-    model: PreTrainedModel,
+    model: Any,
     input_ids: torch.Tensor,
     max_new_tokens: int,
     eos_token_id: int | None = None,
@@ -54,6 +54,11 @@ def greedy_decode(
     decode_times_seconds: list[float] = []
 
     device = input_ids.device
+    finished = torch.zeros(
+        input_ids.shape[0],
+        dtype=torch.bool,
+        device=device,
+    )
 
     _synchronize_if_needed(device)
     total_start = perf_counter()
@@ -91,6 +96,14 @@ def greedy_decode(
             keepdim=True,
         )
 
+        if eos_token_id is not None:
+            eos_fill = torch.full_like(next_token_id, eos_token_id)
+            next_token_id = torch.where(
+                finished.unsqueeze(-1),
+                eos_fill,
+                next_token_id,
+            )
+
         generated_ids = torch.cat(
             [generated_ids, next_token_id],
             dim=-1,
@@ -101,7 +114,8 @@ def greedy_decode(
         past_key_values = outputs.past_key_values
 
         if eos_token_id is not None:
-            if torch.all(next_token_id == eos_token_id):
+            finished |= next_token_id.squeeze(-1) == eos_token_id
+            if bool(torch.all(finished)):
                 break
 
     _synchronize_if_needed(device)

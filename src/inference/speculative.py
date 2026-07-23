@@ -5,7 +5,6 @@ from time import perf_counter
 from typing import Any
 
 import torch
-from transformers import PreTrainedModel
 
 
 @dataclass
@@ -61,7 +60,7 @@ def _crop_past_key_values(
 
 @torch.inference_mode()
 def _draft_propose(
-    draft_model: PreTrainedModel,
+    draft_model: Any,
     input_ids: torch.Tensor,
     num_tokens: int,
     eos_token_id: int | None,
@@ -123,8 +122,8 @@ def _draft_propose(
 
 @torch.inference_mode()
 def greedy_speculative_decode(
-    draft_model: PreTrainedModel,
-    target_model: PreTrainedModel,
+    draft_model: Any,
+    target_model: Any,
     input_ids: torch.Tensor,
     max_new_tokens: int,
     draft_tokens_per_round: int = 4,
@@ -230,15 +229,15 @@ def greedy_speculative_decode(
         else:
             target_predictions = first_prediction
 
-        mismatch_index: int | None = None
-
-        for token_index in range(actual_proposal_length):
-            draft_token = draft_proposals[0, token_index]
-            target_token = target_predictions[0, token_index]
-
-            if draft_token.item() != target_token.item():
-                mismatch_index = token_index
-                break
+        mismatch_positions = torch.nonzero(
+            draft_proposals != target_predictions,
+            as_tuple=False,
+        )
+        mismatch_index = (
+            int(mismatch_positions[0, 1].item())
+            if mismatch_positions.numel()
+            else None
+        )
 
         if mismatch_index is not None:
             if mismatch_index > 0:
@@ -278,6 +277,9 @@ def greedy_speculative_decode(
                 eos_token_id is not None
                 and correction_token.item() == eos_token_id
             ):
+                break
+
+            if current_ids.shape[1] - prompt_length >= max_new_tokens:
                 break
 
             correction_outputs = target_model(

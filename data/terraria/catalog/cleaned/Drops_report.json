@@ -1,6 +1,6 @@
 {
-  "input_path": "/content/llm_project/data/terraria/catalog/normalized/Drops.jsonl",
-  "output_path": "/content/llm_project/data/terraria/catalog/cleaned/Drops.jsonl",
+  "input_path": "data/terraria/catalog/normalized/Drops.jsonl",
+  "output_path": "data/terraria/catalog/cleaned/Drops.jsonl",
   "total_records": 3144,
   "ok_records": 3135,
   "partial_records": 9,

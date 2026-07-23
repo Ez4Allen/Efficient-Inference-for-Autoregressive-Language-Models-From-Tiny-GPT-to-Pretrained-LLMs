@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "efficient-autoregressive-inference"
+version = "0.3.0"
+description = "Autoregressive LM inference experiments and a structured Terraria knowledge pipeline"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Ez4Allen" }]
+dependencies = [
+  "torch>=2.1",
+  "transformers>=4.45",
+  "accelerate>=0.30",
+  "datasets>=2.18",
+  "tokenizers>=0.19",
+  "pandas>=2.0",
+  "numpy>=1.26",
+  "matplotlib>=3.8",
+  "pyyaml>=6.0",
+  "tqdm>=4.66",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+training = [
+  "peft>=0.12",
+  "bitsandbytes>=0.46; platform_system == 'Linux'",
+]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+  "integration: builds and validates the Terraria SQLite catalog",
+  "gpu: requires CUDA and local model checkpoints",
+]

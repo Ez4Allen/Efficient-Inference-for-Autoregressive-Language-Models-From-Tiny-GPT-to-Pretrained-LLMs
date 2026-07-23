@@ -2,11 +2,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from transformers.modeling_utils import PreTrainedModel
-from transformers.tokenization_utils_base import PreTrainedTokenizerBase
+
+from src.utils.device import resolve_device
+from src.utils.paths import PROJECT_ROOT
+
+if TYPE_CHECKING:
+    from transformers.modeling_utils import PreTrainedModel
+    from transformers.tokenization_utils_base import PreTrainedTokenizerBase
+else:
+    PreTrainedModel = Any
+    PreTrainedTokenizerBase = Any
 
 
 @dataclass
@@ -22,27 +30,6 @@ class ModelBundle:
 class SpeculativeModelBundle:
     draft: ModelBundle
     target: ModelBundle
-
-
-def resolve_device(
-    device: str | torch.device | None = None,
-) -> torch.device:
-    """
-    Use the requested device, or select CUDA automatically when available.
-    """
-
-    resolved = torch.device(
-        device
-        if device is not None
-        else "cuda" if torch.cuda.is_available() else "cpu"
-    )
-
-    if resolved.type == "cuda" and not torch.cuda.is_available():
-        raise RuntimeError(
-            "CUDA was requested, but CUDA is not available."
-        )
-
-    return resolved
 
 
 def resolve_dtype(
@@ -77,17 +64,31 @@ def load_causal_lm(
     Load a causal language model from Hugging Face or a local directory.
     """
 
-    model_name = str(model_name)
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    raw_model_name = str(model_name)
+    direct_candidate = Path(raw_model_name).expanduser()
+    project_candidate = (PROJECT_ROOT / direct_candidate).resolve()
+
+    if direct_candidate.exists():
+        local_candidate = direct_candidate.resolve()
+    elif not direct_candidate.is_absolute() and project_candidate.exists():
+        local_candidate = project_candidate
+    else:
+        local_candidate = None
+
+    if local_candidate is not None:
+        if not local_candidate.is_dir():
+            raise FileNotFoundError(
+                f"Local model path is not a directory: {local_candidate}"
+            )
+        model_name = str(local_candidate)
+    else:
+        model_name = raw_model_name
+
+    effective_local_files_only = local_files_only or local_candidate is not None
     resolved_device = resolve_device(device)
     resolved_dtype = resolve_dtype(resolved_device, dtype)
-
-    if local_files_only:
-        model_path = Path(model_name)
-
-        if not model_path.is_dir():
-            raise FileNotFoundError(
-                f"Local model directory not found: {model_path}"
-            )
 
     print(f"Loading model: {model_name}")
     print(f"Device: {resolved_device}")
@@ -96,7 +97,7 @@ def load_causal_lm(
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
         trust_remote_code=trust_remote_code,
-        local_files_only=local_files_only,
+        local_files_only=effective_local_files_only,
     )
 
     if tokenizer.pad_token_id is None:
@@ -108,9 +109,9 @@ def load_causal_lm(
         tokenizer.pad_token = tokenizer.eos_token
 
     model_kwargs = {
-        "dtype": resolved_dtype,
+        "torch_dtype": resolved_dtype,
         "trust_remote_code": trust_remote_code,
-        "local_files_only": local_files_only,
+        "local_files_only": effective_local_files_only,
         "low_cpu_mem_usage": True,
     }
 
@@ -130,7 +131,7 @@ def load_causal_lm(
         **model_kwargs,
     )
 
-    if resolved_device.type == "cpu":
+    if resolved_device.type != "cuda":
         model.to(resolved_device)
 
     model.eval()
@@ -194,7 +195,7 @@ def load_speculative_models(
         device=device,
         dtype=dtype,
         trust_remote_code=trust_remote_code,
-        local_files_only=local_files_only,
+        local_files_only=effective_local_files_only,
     )
 
     target = load_causal_lm(
@@ -202,7 +203,7 @@ def load_speculative_models(
         device=device,
         dtype=dtype,
         trust_remote_code=trust_remote_code,
-        local_files_only=local_files_only,
+        local_files_only=effective_local_files_only,
     )
 
     validate_tokenizer_compatibility(

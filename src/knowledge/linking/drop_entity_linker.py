@@ -9,33 +9,20 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+from src.utils.paths import portable_path, TERRARIA_CLEANED_ROOT, TERRARIA_LINKED_ROOT
+
 from ..catalog_store import normalize_catalog_name
 
 
-DEFAULT_ITEMS_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/cleaned/Items.jsonl"
-)
+DEFAULT_ITEMS_PATH = TERRARIA_CLEANED_ROOT / "Items.jsonl"
 
-DEFAULT_NPCS_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/cleaned/NPCs.jsonl"
-)
+DEFAULT_NPCS_PATH = TERRARIA_CLEANED_ROOT / "NPCs.jsonl"
 
-DEFAULT_DROPS_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/cleaned/Drops.jsonl"
-)
+DEFAULT_DROPS_PATH = TERRARIA_CLEANED_ROOT / "Drops.jsonl"
 
-DEFAULT_OUTPUT_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/linked/Drops.jsonl"
-)
+DEFAULT_OUTPUT_PATH = TERRARIA_LINKED_ROOT / "Drops.jsonl"
 
-DEFAULT_REPORT_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/linked/Drops_link_report.json"
-)
+DEFAULT_REPORT_PATH = TERRARIA_LINKED_ROOT / "Drops_link_report.json"
 
 
 ITEM_QUALIFIER_PATTERN = re.compile(
@@ -1283,10 +1270,10 @@ def link_drops_file(
     )
 
     report = {
-        "items_path": str(items_path),
-        "npcs_path": str(npcs_path),
-        "drops_path": str(drops_path),
-        "output_path": str(output_path),
+        "items_path": portable_path(items_path),
+        "npcs_path": portable_path(npcs_path),
+        "drops_path": portable_path(drops_path),
+        "output_path": portable_path(output_path),
 
         "item_records": len(items),
         "npc_records": len(npcs),

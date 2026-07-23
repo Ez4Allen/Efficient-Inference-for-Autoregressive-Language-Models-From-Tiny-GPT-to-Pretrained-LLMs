@@ -8,10 +8,10 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from src.utils.paths import TERRARIA_CATALOG_ROOT
 
-CATALOG_ROOT = Path(
-    "/content/llm_project/data/terraria/catalog"
-)
+
+CATALOG_ROOT = TERRARIA_CATALOG_ROOT
 
 DEFAULT_ITEMS_PATH = (
     CATALOG_ROOT
@@ -293,6 +293,37 @@ def _validate_npc_candidates(
     return count
 
 
+def _assert_expected_subset(
+    actual: dict[str, Any],
+    expected: dict[str, Any],
+    *,
+    context: str = "report",
+) -> None:
+    """Recursively validate an optional snapshot expectation."""
+
+    for key, expected_value in expected.items():
+        if key not in actual:
+            raise AssertionError(f"Missing expected field: {context}.{key}")
+
+        actual_value = actual[key]
+        if isinstance(expected_value, dict):
+            if not isinstance(actual_value, dict):
+                raise AssertionError(
+                    f"Expected mapping at {context}.{key}, got "
+                    f"{type(actual_value).__name__}."
+                )
+            _assert_expected_subset(
+                actual_value,
+                expected_value,
+                context=f"{context}.{key}",
+            )
+        elif actual_value != expected_value:
+            raise AssertionError(
+                f"Snapshot mismatch at {context}.{key}: "
+                f"expected {expected_value!r}, got {actual_value!r}."
+            )
+
+
 def audit_catalog_integrity(
     items_path: str | Path = (
         DEFAULT_ITEMS_PATH
@@ -315,6 +346,7 @@ def audit_catalog_integrity(
     report_path: str | Path = (
         DEFAULT_REPORT_PATH
     ),
+    expected_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     items_path = Path(items_path)
     npcs_path = Path(npcs_path)
@@ -889,127 +921,46 @@ def audit_catalog_integrity(
                 validated_npc_candidates += 1
 
     # ----------------------------------------------
-    # Exact expected state after the cleaning and
-    # linking pipeline.
+    # Cross-table count invariants. These checks are
+    # data-driven so the audit remains valid after a
+    # future catalog refresh. Exact snapshot counts can
+    # still be supplied through ``expected_summary``.
     # ----------------------------------------------
 
-    expected_recipe_result_statuses = {
-        "linked": 3317,
-        "unresolved": 92,
-    }
+    if sum(recipe_result_status_counts.values()) != len(linked_recipes):
+        raise AssertionError("Recipe result status counts do not sum to records.")
 
-    expected_recipe_ingredient_statuses = {
-        "linked": 6537,
-        "group": 377,
-        "unresolved": 45,
-    }
+    if sum(recipe_linking_status_counts.values()) != len(linked_recipes):
+        raise AssertionError("Recipe linking status counts do not sum to records.")
 
-    expected_recipe_linking_statuses = {
-        "complete": 3304,
-        "partial": 105,
-    }
-
-    expected_drop_item_statuses = {
-        "linked": 3131,
-        "unresolved": 8,
-        "group": 5,
-    }
-
-    expected_drop_source_statuses = {
-        "classified": 1694,
-        "linked": 1368,
-        "group": 80,
-        "unresolved": 2,
-    }
-
-    expected_drop_linking_statuses = {
-        "complete": 3134,
-        "partial": 10,
-    }
-
-    if dict(
-        recipe_result_status_counts
-    ) != expected_recipe_result_statuses:
+    if sum(recipe_ingredient_status_counts.values()) != recipe_ingredient_count:
         raise AssertionError(
-            "Unexpected Recipe result "
-            "link-status counts."
+            "Recipe ingredient status counts do not sum to ingredients."
         )
 
-    if dict(
-        recipe_ingredient_status_counts
-    ) != expected_recipe_ingredient_statuses:
-        raise AssertionError(
-            "Unexpected Recipe ingredient "
-            "link-status counts."
-        )
+    if sum(drop_item_status_counts.values()) != len(linked_drops):
+        raise AssertionError("Drop item status counts do not sum to records.")
 
-    if dict(
-        recipe_linking_status_counts
-    ) != expected_recipe_linking_statuses:
-        raise AssertionError(
-            "Unexpected Recipe overall "
-            "link-status counts."
-        )
+    if sum(drop_source_status_counts.values()) != len(linked_drops):
+        raise AssertionError("Drop source status counts do not sum to records.")
 
-    if dict(
-        drop_item_status_counts
-    ) != expected_drop_item_statuses:
-        raise AssertionError(
-            "Unexpected Drop item "
-            "link-status counts."
-        )
+    if sum(drop_linking_status_counts.values()) != len(linked_drops):
+        raise AssertionError("Drop linking status counts do not sum to records.")
 
-    if dict(
-        drop_source_status_counts
-    ) != expected_drop_source_statuses:
-        raise AssertionError(
-            "Unexpected Drop source "
-            "link-status counts."
-        )
-
-    if dict(
-        drop_linking_status_counts
-    ) != expected_drop_linking_statuses:
-        raise AssertionError(
-            "Unexpected Drop overall "
-            "link-status counts."
-        )
-
-    if recipe_variant_count != 4221:
-        raise AssertionError(
-            "Unexpected Recipe variant count."
-        )
-
-    if recipe_ingredient_count != 6959:
-        raise AssertionError(
-            "Unexpected Recipe ingredient count."
-        )
-
-    # Resolved foreign-key references:
-    #
-    # Recipe result Items:      3317
-    # Recipe ingredient Items:  6537
-    # Drop Items:               3131
-    # Drop NPC sources:         1368
     expected_resolved_references = (
-        3317
-        + 6537
-        + 3131
-        + 1368
+        recipe_result_status_counts.get("linked", 0)
+        + recipe_ingredient_status_counts.get("linked", 0)
+        + drop_item_status_counts.get("linked", 0)
+        + drop_source_status_counts.get("linked", 0)
     )
 
     actual_resolved_references = (
-        resolved_item_references
-        + resolved_npc_references
+        resolved_item_references + resolved_npc_references
     )
 
-    if (
-        actual_resolved_references
-        != expected_resolved_references
-    ):
+    if actual_resolved_references != expected_resolved_references:
         raise AssertionError(
-            "Unexpected total resolved "
-            "reference count."
+            "Resolved reference count does not match linked status counts."
         )
 
     report = {
@@ -1133,6 +1084,17 @@ def audit_catalog_integrity(
             ),
         },
     }
+
+    if expected_summary is not None:
+        _assert_expected_subset(
+            report,
+            expected_summary,
+            context="integrity_report",
+        )
+
+    report["snapshot_expectations_validated"] = (
+        expected_summary is not None
+    )
 
     report_path.parent.mkdir(
         parents=True,

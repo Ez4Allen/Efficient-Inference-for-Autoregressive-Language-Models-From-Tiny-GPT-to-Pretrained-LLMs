@@ -9,14 +9,13 @@ import torch
 
 from src.models.loader import ModelBundle
 
+from src.utils.paths import RESULTS_ROOT, TERRARIA_DATA_ROOT
 
-DEFAULT_EVAL_PATH = Path(
-    "/content/llm_project/data/terraria/terraria_eval.jsonl"
-)
 
-DEFAULT_OUTPUT_PATH = Path(
-    "/content/llm_project/results/terraria/"
-    "qwen3_4b_baseline.jsonl"
+DEFAULT_EVAL_PATH = TERRARIA_DATA_ROOT / "terraria_eval.jsonl"
+
+DEFAULT_OUTPUT_PATH = (
+    RESULTS_ROOT / "terraria" / "qwen3_4b_baseline.jsonl"
 )
 
 

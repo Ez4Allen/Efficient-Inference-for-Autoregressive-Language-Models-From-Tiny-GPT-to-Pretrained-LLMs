@@ -1,138 +1,111 @@
+"""Load a TinyGPT checkpoint and generate text."""
+
+from __future__ import annotations
+
 import argparse
+from pathlib import Path
+from typing import Any
+
 import torch
 
 from src.models.tiny_lm.model import TinyGPT
 from src.models.tiny_lm.tokenizer import CharTokenizer
+from src.utils.paths import resolve_project_path
+from src.utils.seed import set_global_seed
 
 
-def load_model_and_tokenizer(checkpoint_path, tokenizer_path, device):
-    """
-    Load a trained TinyGPT checkpoint and its tokenizer.
-    """
-
-    tokenizer = CharTokenizer.load(tokenizer_path)
-
-    checkpoint = torch.load(checkpoint_path, map_location=device)
+def load_model_and_tokenizer(
+    checkpoint_path: str | Path,
+    tokenizer_path: str | Path,
+    device: str | torch.device,
+) -> tuple[TinyGPT, CharTokenizer, dict[str, Any]]:
+    tokenizer = CharTokenizer.load(resolve_project_path(tokenizer_path))
+    checkpoint = torch.load(
+        resolve_project_path(checkpoint_path),
+        map_location=device,
+        weights_only=False,
+    )
     config = checkpoint["config"]
-
     model = TinyGPT(
         vocab_size=config["vocab_size"],
         block_size=config["block_size"],
         n_layer=config["n_layer"],
         n_head=config["n_head"],
         n_embd=config["n_embd"],
+        d_ff=config.get("d_ff", 4 * config["n_embd"]),
         dropout=config["dropout"],
     ).to(device)
-
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
-
     return model, tokenizer, config
 
 
 def generate_text(
-    model,
-    tokenizer,
-    prompt,
-    device,
-    max_new_tokens=500,
-    temperature=0.8,
-):
-    """
-    Generate text from a prompt using the trained TinyGPT model.
-    """
-
+    model: TinyGPT,
+    tokenizer: CharTokenizer,
+    prompt: str,
+    device: str | torch.device,
+    *,
+    max_new_tokens: int = 500,
+    temperature: float = 0.8,
+    top_k: int | None = None,
+    seed: int | None = None,
+) -> str:
+    if not prompt:
+        raise ValueError("prompt cannot be empty.")
     input_ids = tokenizer.encode(prompt)
-    idx = torch.tensor([input_ids], dtype=torch.long, device=device)
-
-    with torch.no_grad():
-        output_ids = model.generate(
-            idx,
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-        )
-
-    generated_text = tokenizer.decode(output_ids[0].tolist())
-    return generated_text
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Generate text using a trained tiny GPT-style language model."
+    tensor = torch.tensor([input_ids], dtype=torch.long, device=device)
+    generator = None
+    if seed is not None:
+        set_global_seed(seed)
+        generator = torch.Generator(device=torch.device(device).type)
+        generator.manual_seed(seed)
+    output_ids = model.generate(
+        tensor,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        top_k=top_k,
+        generator=generator,
     )
+    return tokenizer.decode(output_ids[0].tolist())
 
-    parser.add_argument(
-        "--checkpoint",
-        type=str,
-        default="results/tiny_gpt_shakespeare/model.pt",
-        help="Path to the trained model checkpoint.",
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument("--tokenizer", type=Path, required=True)
+    parser.add_argument("--prompt", default="First Citizen:")
+    parser.add_argument("--max-new-tokens", type=int, default=500)
+    parser.add_argument("--temperature", type=float, default=0.8)
+    parser.add_argument("--top-k", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--device", default="auto")
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    device = (
+        torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if args.device == "auto"
+        else torch.device(args.device)
     )
-
-    parser.add_argument(
-        "--tokenizer",
-        type=str,
-        default="results/tiny_gpt_shakespeare/tokenizer.json",
-        help="Path to the saved tokenizer JSON file.",
-    )
-
-    parser.add_argument(
-        "--prompt",
-        type=str,
-        default="First Citizen:",
-        help="Prompt text used to start generation.",
-    )
-
-    parser.add_argument(
-        "--max_new_tokens",
-        type=int,
-        default=500,
-        help="Number of new tokens to generate.",
-    )
-
-    parser.add_argument(
-        "--temperature",
-        type=float,
-        default=0.8,
-        help="Sampling temperature. Lower is more conservative; higher is more random.",
-    )
-
-    parser.add_argument(
-        "--device",
-        type=str,
-        default=None,
-        help="Device to use: cuda, cpu, or leave empty for auto-detection.",
-    )
-
-    args = parser.parse_args()
-
-    if args.device is None:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-    else:
-        device = args.device
-
-    print("Using device:", device)
-
     model, tokenizer, config = load_model_and_tokenizer(
-        checkpoint_path=args.checkpoint,
-        tokenizer_path=args.tokenizer,
-        device=device,
+        args.checkpoint, args.tokenizer, device
     )
-
-    print("Loaded checkpoint:", args.checkpoint)
-    print("Loaded tokenizer:", args.tokenizer)
-    print("Model config:", config)
-    print("-" * 80)
-
-    generated_text = generate_text(
-        model=model,
-        tokenizer=tokenizer,
-        prompt=args.prompt,
-        device=device,
-        max_new_tokens=args.max_new_tokens,
-        temperature=args.temperature,
+    print(f"Loaded model config: {config}")
+    print(
+        generate_text(
+            model,
+            tokenizer,
+            args.prompt,
+            device,
+            max_new_tokens=args.max_new_tokens,
+            temperature=args.temperature,
+            top_k=args.top_k,
+            seed=args.seed,
+        )
     )
-
-    print(generated_text)
 
 
 if __name__ == "__main__":

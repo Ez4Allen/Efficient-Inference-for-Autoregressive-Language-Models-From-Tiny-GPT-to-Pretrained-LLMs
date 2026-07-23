@@ -8,26 +8,16 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+from src.utils.paths import portable_path, TERRARIA_CLEANED_ROOT, TERRARIA_LINKED_ROOT
 
-DEFAULT_ITEMS_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/cleaned/Items.jsonl"
-)
 
-DEFAULT_RECIPES_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/cleaned/Recipes.jsonl"
-)
+DEFAULT_ITEMS_PATH = TERRARIA_CLEANED_ROOT / "Items.jsonl"
 
-DEFAULT_OUTPUT_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/linked/Recipes.jsonl"
-)
+DEFAULT_RECIPES_PATH = TERRARIA_CLEANED_ROOT / "Recipes.jsonl"
 
-DEFAULT_REPORT_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/linked/Recipes_link_report.json"
-)
+DEFAULT_OUTPUT_PATH = TERRARIA_LINKED_ROOT / "Recipes.jsonl"
+
+DEFAULT_REPORT_PATH = TERRARIA_LINKED_ROOT / "Recipes_link_report.json"
 
 
 def _load_jsonl(
@@ -998,11 +988,9 @@ def link_recipes_file(
     )
 
     report = {
-        "items_path": str(items_path),
-        "recipes_path": str(
-            recipes_path
-        ),
-        "output_path": str(output_path),
+        "items_path": portable_path(items_path),
+        "recipes_path": portable_path(recipes_path),
+        "output_path": portable_path(output_path),
 
         "item_records": len(items),
         "recipe_records": total_records,

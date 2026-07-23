@@ -1,6 +1,6 @@
 {
-  "input_path": "/content/llm_project/data/terraria/catalog/normalized/Items.jsonl",
-  "output_path": "/content/llm_project/data/terraria/catalog/cleaned/Items.jsonl",
+  "input_path": "data/terraria/catalog/normalized/Items.jsonl",
+  "output_path": "data/terraria/catalog/cleaned/Items.jsonl",
   "total_records": 6283,
   "ok_records": 6283,
   "partial_records": 0,

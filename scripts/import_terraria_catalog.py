@@ -7,6 +7,7 @@ import json
 import re
 import shutil
 import sqlite3
+import sys
 import time
 import unicodedata
 
@@ -21,7 +22,10 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 
-PROJECT_ROOT = Path("/content/llm_project")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 DATA_ROOT = (
     PROJECT_ROOT
