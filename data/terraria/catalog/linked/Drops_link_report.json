@@ -1,8 +1,8 @@
 {
-  "items_path": "/content/llm_project/data/terraria/catalog/cleaned/Items.jsonl",
-  "npcs_path": "/content/llm_project/data/terraria/catalog/cleaned/NPCs.jsonl",
-  "drops_path": "/content/llm_project/data/terraria/catalog/cleaned/Drops.jsonl",
-  "output_path": "/content/llm_project/data/terraria/catalog/linked/Drops.jsonl",
+  "items_path": "data/terraria/catalog/cleaned/Items.jsonl",
+  "npcs_path": "data/terraria/catalog/cleaned/NPCs.jsonl",
+  "drops_path": "data/terraria/catalog/cleaned/Drops.jsonl",
+  "output_path": "data/terraria/catalog/linked/Drops.jsonl",
   "item_records": 6283,
   "npc_records": 770,
   "drop_records": 3144,

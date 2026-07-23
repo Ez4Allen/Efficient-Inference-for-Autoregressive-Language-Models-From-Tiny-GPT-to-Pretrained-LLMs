@@ -3,16 +3,17 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import zlib
 
 from pathlib import Path
 from typing import Any, Iterable
 
-from .catalog_store import normalize_catalog_name
+from .catalog_store import build_fts_query, normalize_catalog_name
+from src.utils.paths import TERRARIA_CATALOG_ROOT
 
 
-DEFAULT_DATABASE_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/terraria_query.sqlite3"
+DEFAULT_DATABASE_PATH = (
+    TERRARIA_CATALOG_ROOT / "terraria_query.sqlite3"
 )
 
 
@@ -35,7 +36,7 @@ class TerrariaQueryStore:
     ) -> None:
         self.database_path = Path(
             database_path
-        )
+        ).expanduser().resolve()
 
         if not self.database_path.exists():
             raise FileNotFoundError(
@@ -70,6 +71,13 @@ class TerrariaQueryStore:
         self._connection.execute(
             "PRAGMA foreign_keys = ON"
         )
+        self._connection.execute(
+            "PRAGMA busy_timeout = 5000"
+        )
+        if read_only:
+            self._connection.execute(
+                "PRAGMA query_only = ON"
+            )
 
         self._closed = False
 
@@ -111,21 +119,24 @@ class TerrariaQueryStore:
         if value is None:
             return default
 
-        if isinstance(
-            value,
-            (dict, list),
-        ):
+        if isinstance(value, (dict, list)):
             return value
 
-        try:
-            return json.loads(
-                str(value)
-            )
+        if isinstance(value, memoryview):
+            value = value.tobytes()
 
-        except (
-            json.JSONDecodeError,
-            TypeError,
-        ):
+        if isinstance(value, bytes):
+            try:
+                value = zlib.decompress(value).decode("utf-8")
+            except (zlib.error, UnicodeDecodeError):
+                try:
+                    value = value.decode("utf-8")
+                except UnicodeDecodeError:
+                    return default
+
+        try:
+            return json.loads(str(value))
+        except (json.JSONDecodeError, TypeError):
             return default
 
     @staticmethod
@@ -221,32 +232,9 @@ class TerrariaQueryStore:
     def _fts_query(
         query: str,
     ) -> str:
-        tokens = [
-            token.strip()
-            for token in str(
-                query
-            ).split()
-            if token.strip()
-        ]
+        """Build a punctuation-safe FTS5 query."""
 
-        if not tokens:
-            raise ValueError(
-                "Search query cannot be empty."
-            )
-
-        escaped_tokens = [
-            '"'
-            + token.replace(
-                '"',
-                '""',
-            )
-            + '"'
-            for token in tokens
-        ]
-
-        return " AND ".join(
-            escaped_tokens
-        )
+        return build_fts_query(query)
 
     def metadata(
         self,
@@ -323,16 +311,36 @@ class TerrariaQueryStore:
         self,
         name: str,
         *,
+        item_id: int | None = None,
+        internal_name: str | None = None,
         include_record: bool = True,
     ) -> dict[str, Any]:
-        normalized_name = (
-            normalize_catalog_name(
-                name
-            )
-        )
+        """Return an Item by display name with optional disambiguators."""
+
+        normalized_name = normalize_catalog_name(name)
+
+        if item_id is not None:
+            if isinstance(item_id, bool) or not isinstance(item_id, int):
+                raise TypeError("item_id must be an integer or None.")
+
+        if internal_name is not None:
+            internal_name = str(internal_name).strip()
+            if not internal_name:
+                raise ValueError("internal_name cannot be empty.")
+
+        clauses = ["normalized_name = ?"]
+        parameters: list[Any] = [normalized_name]
+
+        if item_id is not None:
+            clauses.append("item_id = ?")
+            parameters.append(item_id)
+
+        if internal_name is not None:
+            clauses.append("internal_name = ?")
+            parameters.append(internal_name)
 
         rows = self._fetch_all(
-            """
+            f"""
             SELECT
                 source_catalog_id,
                 item_id,
@@ -342,63 +350,42 @@ class TerrariaQueryStore:
                 parse_status,
                 record_json
             FROM items
-            WHERE normalized_name = ?
+            WHERE {' AND '.join(clauses)}
             ORDER BY
                 item_id IS NULL,
                 item_id,
                 source_catalog_id
             """,
-            (
-                normalized_name,
-            ),
+            tuple(parameters),
         )
 
         if not rows:
             return {
                 "status": "not_found",
                 "query": name,
-                "normalized_query": (
-                    normalized_name
-                ),
+                "normalized_query": normalized_name,
+                "item_id": item_id,
+                "internal_name": internal_name,
                 "matches": [],
             }
 
-        parsed_rows = []
-
         for row in rows:
             if include_record:
-                row["record"] = (
-                    self._decode_json(
-                        row.pop(
-                            "record_json"
-                        ),
-                        default={},
-                    )
+                row["record"] = self._decode_json(
+                    row.pop("record_json"),
+                    default={},
                 )
             else:
-                row.pop(
-                    "record_json",
-                    None,
-                )
-
-            parsed_rows.append(row)
+                row.pop("record_json", None)
 
         return {
-            "status": (
-                "found"
-                if len(parsed_rows) == 1
-                else "ambiguous"
-            ),
+            "status": "found" if len(rows) == 1 else "ambiguous",
             "query": name,
-            "normalized_query": (
-                normalized_name
-            ),
-            "match": (
-                parsed_rows[0]
-                if len(parsed_rows) == 1
-                else None
-            ),
-            "matches": parsed_rows,
+            "normalized_query": normalized_name,
+            "item_id": item_id,
+            "internal_name": internal_name,
+            "match": rows[0] if len(rows) == 1 else None,
+            "matches": rows,
         }
 
     def get_item_by_id(
@@ -1214,10 +1201,14 @@ class TerrariaQueryStore:
         self,
         item_name: str,
         *,
+        item_id: int | None = None,
+        internal_name: str | None = None,
         preferred_only: bool = True,
     ) -> dict[str, Any]:
         item_result = self.get_item(
             item_name,
+            item_id=item_id,
+            internal_name=internal_name,
             include_record=False,
         )
 
@@ -1328,15 +1319,9 @@ class TerrariaQueryStore:
         )
 
         row["availability"] = {
-            "normal": bool(
-                row["available_normal"]
-            ),
-            "expert": bool(
-                row["available_expert"]
-            ),
-            "master": bool(
-                row["available_master"]
-            ),
+            "normal": bool(row.pop("available_normal")),
+            "expert": bool(row.pop("available_expert")),
+            "master": bool(row.pop("available_master")),
         }
 
         row["chance"] = chance_by_mode.get(
@@ -1389,6 +1374,8 @@ class TerrariaQueryStore:
         self,
         item_name: str,
         *,
+        item_id: int | None = None,
+        internal_name: str | None = None,
         mode: str = "normal",
         include_partial: bool = True,
         include_record: bool = False,
@@ -1399,6 +1386,8 @@ class TerrariaQueryStore:
 
         item_result = self.get_item(
             item_name,
+            item_id=item_id,
+            internal_name=internal_name,
             include_record=False,
         )
 

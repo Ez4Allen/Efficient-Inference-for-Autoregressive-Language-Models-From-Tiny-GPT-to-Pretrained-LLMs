@@ -1,8 +1,8 @@
 {
   "status": "passed",
-  "schema_version": "1.0.0",
-  "database_path": "/content/llm_project/data/terraria/catalog/terraria_query.sqlite3",
-  "database_size_bytes": 94789632,
+  "schema_version": "1.1.0",
+  "database_path": "data/terraria/catalog/terraria_query.sqlite3",
+  "database_size_bytes": 40611840,
   "fts_enabled": true,
   "input_counts": {
     "items": 6283,
@@ -20,7 +20,7 @@
     "drops": 3144
   },
   "table_counts": {
-    "metadata": 4,
+    "metadata": 5,
     "items": 6283,
     "npcs": 770,
     "recipes": 3409,
@@ -54,5 +54,5 @@
     "recipes": "bc71ca42cfca2e829d8fd29eab5459833e3a2e5a0f0808a97df832f78b23da34",
     "drops": "72f9d529952e59caa78a3831f909d2b58648bd388317048b6a69067bee6de620"
   },
-  "database_sha256": "5cc4e650e9a4014d6395f148984e1d8f463f279f3a26bc8da9367efbf37f658e"
+  "database_sha256": "198fca6a712c027637595e47e95b6ce96737a92afaf0135381ad8227ce954f46"
 }

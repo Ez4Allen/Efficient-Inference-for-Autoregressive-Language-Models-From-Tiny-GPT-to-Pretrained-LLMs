@@ -4,15 +4,16 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import zlib
 
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from src.utils.paths import portable_path, TERRARIA_CATALOG_ROOT
 
-CATALOG_ROOT = Path(
-    "/content/llm_project/data/terraria/catalog"
-)
+
+CATALOG_ROOT = TERRARIA_CATALOG_ROOT
 
 
 DEFAULT_ITEMS_PATH = (
@@ -50,7 +51,7 @@ DEFAULT_REPORT_PATH = (
 )
 
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
 
 
 def _load_jsonl(
@@ -103,6 +104,17 @@ def _json_text(
         value,
         ensure_ascii=False,
         separators=(",", ":"),
+    )
+
+
+def _json_blob(
+    value: Any,
+) -> bytes:
+    """Compress a full record payload before storing it in SQLite."""
+
+    return zlib.compress(
+        _json_text(value).encode("utf-8"),
+        level=9,
     )
 
 
@@ -174,7 +186,7 @@ def _create_schema(
             normalized_name TEXT NOT NULL,
             internal_name TEXT,
             parse_status TEXT NOT NULL,
-            record_json TEXT NOT NULL
+            record_json BLOB NOT NULL
         ) WITHOUT ROWID;
 
 
@@ -184,7 +196,7 @@ def _create_schema(
             name TEXT NOT NULL,
             normalized_name TEXT NOT NULL,
             parse_status TEXT NOT NULL,
-            record_json TEXT NOT NULL
+            record_json BLOB NOT NULL
         ) WITHOUT ROWID;
 
 
@@ -204,7 +216,7 @@ def _create_schema(
             parse_status TEXT NOT NULL,
 
             preferred_variant_ids_json TEXT NOT NULL,
-            record_json TEXT NOT NULL,
+            record_json BLOB NOT NULL,
 
             FOREIGN KEY (
                 result_item_catalog_id
@@ -228,7 +240,7 @@ def _create_schema(
             result_quantity INTEGER,
 
             station_names_json TEXT NOT NULL,
-            record_json TEXT NOT NULL,
+            record_json BLOB NOT NULL,
 
             FOREIGN KEY (
                 recipe_catalog_id
@@ -275,7 +287,7 @@ def _create_schema(
             item_id INTEGER,
 
             group_json TEXT,
-            record_json TEXT NOT NULL,
+            record_json BLOB NOT NULL,
 
             FOREIGN KEY (
                 variant_id
@@ -333,7 +345,7 @@ def _create_schema(
             linking_status TEXT NOT NULL,
             parse_status TEXT NOT NULL,
 
-            record_json TEXT NOT NULL,
+            record_json BLOB NOT NULL,
 
             FOREIGN KEY (
                 item_catalog_id
@@ -773,7 +785,7 @@ def _insert_items(
                 item["normalized_name"],
                 item.get("internal_name"),
                 item["parse_status"],
-                _json_text(item),
+                _json_blob(item),
             )
         )
 
@@ -808,7 +820,7 @@ def _insert_npcs(
                 npc["name"],
                 npc["normalized_name"],
                 npc["parse_status"],
-                _json_text(npc),
+                _json_blob(npc),
             )
         )
 
@@ -896,7 +908,7 @@ def _insert_recipes(
                     )
                 ),
 
-                _json_text(recipe),
+                _json_blob(recipe),
             )
         )
 
@@ -955,7 +967,7 @@ def _insert_recipes(
                         station_names
                     ),
 
-                    _json_text(variant),
+                    _json_blob(variant),
                 )
             )
 
@@ -1050,7 +1062,7 @@ def _insert_recipes(
                             else None
                         ),
 
-                        _json_text(ingredient),
+                        _json_blob(ingredient),
                     )
                 )
 
@@ -1311,7 +1323,7 @@ def _insert_drops(
                 drop["linking"]["status"],
                 drop["parse_status"],
 
-                _json_text(drop),
+                _json_blob(drop),
             )
         )
 
@@ -1497,6 +1509,7 @@ def build_query_database(
                 "database_type": (
                     "terraria_query_catalog"
                 ),
+                "record_json_encoding": "zlib+utf-8",
 
                 "source_files": {
                     "items": str(items_path),
@@ -1558,6 +1571,8 @@ def build_query_database(
             connection
         )
 
+        connection.execute("ANALYZE")
+        connection.execute("PRAGMA optimize")
         connection.commit()
 
         foreign_key_errors = (
@@ -1654,9 +1669,7 @@ def build_query_database(
                 SCHEMA_VERSION
             ),
 
-            "database_path": str(
-                database_path
-            ),
+            "database_path": portable_path(database_path),
 
             "database_size_bytes": (
                 temporary_database_path

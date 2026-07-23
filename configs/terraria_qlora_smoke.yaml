@@ -1,13 +1,15 @@
-
 experiment_name: terraria_qwen3_4b_qlora_smoke
 
+# Set these before training, for example in Colab:
+#   %env TERRARIA_MODEL_PATH=/content/drive/MyDrive/.../Qwen3-4B-Instruct-2507
+#   %env TERRARIA_OUTPUT_DIR=/content/drive/MyDrive/.../terraria_qwen3_4b_qlora_smoke
 model:
-  model_name_or_path: /content/drive/MyDrive/LLM_Project/models/Qwen3-4B-Instruct-2507
+  model_name_or_path: ${TERRARIA_MODEL_PATH}
   trust_remote_code: true
 
 data:
-  train_path: /content/llm_project/data/terraria/terraria_train_v1.jsonl
-  validation_path: /content/llm_project/data/terraria/terraria_validation_v1.jsonl
+  train_path: data/terraria/terraria_train_v1.jsonl
+  validation_path: data/terraria/terraria_validation_v1.jsonl
   max_length: 512
 
 quantization:
@@ -24,7 +26,7 @@ lora:
   bias: none
 
 training:
-  output_dir: /content/drive/MyDrive/LLM_Project/checkpoints/terraria_qwen3_4b_qlora_smoke
+  output_dir: ${TERRARIA_OUTPUT_DIR}
 
   per_device_train_batch_size: 1
   per_device_eval_batch_size: 1

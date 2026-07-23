@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "snapshot_name": "terraria_catalog_cleaned_v1",
+  "cleaned_sha256": {
+    "items": "78827346a70bde0cf579f61b3f881888a614843dce807e0024e70812d506d1eb",
+    "npcs": "aab3d37dfd3f043d3b3b0aa9131d314973d790b81f18225975e9cba1ab02477a",
+    "recipes": "c92e2cc0545c1ee732832b555db844eaabb2602026f09e2e61f9f088bc623ce1",
+    "drops": "4d4d7ed1c0a8542d11bc1c7a9ad560c7c6446797ef9c3df6efbbb7655edb3d22"
+  },
+  "expected": {
+    "cleaned_counts": {
+      "items": 6283,
+      "npcs": 770,
+      "recipes": 3409,
+      "drops": 3144
+    },
+    "recipe_link_report": {
+      "recipe_records": 3409,
+      "complete_records": 3304,
+      "partial_records": 105,
+      "total_variants": 4221,
+      "total_ingredient_entries": 6959,
+      "result_status_counts": {
+        "linked": 3317,
+        "unresolved": 92
+      },
+      "ingredient_status_counts": {
+        "linked": 6537,
+        "group": 377,
+        "unresolved": 45
+      }
+    },
+    "drop_link_report": {
+      "drop_records": 3144,
+      "complete_records": 3134,
+      "partial_records": 10,
+      "item_status_counts": {
+        "linked": 3131,
+        "unresolved": 8,
+        "group": 5
+      },
+      "source_status_counts": {
+        "classified": 1694,
+        "linked": 1368,
+        "group": 80,
+        "unresolved": 2
+      }
+    },
+    "integrity_report": {
+      "record_counts": {
+        "items": 6283,
+        "npcs": 770,
+        "cleaned_recipes": 3409,
+        "linked_recipes": 3409,
+        "cleaned_drops": 3144,
+        "linked_drops": 3144
+      },
+      "recipe_counts": {
+        "variants": 4221,
+        "ingredients": 6959,
+        "result_statuses": {
+          "linked": 3317,
+          "unresolved": 92
+        },
+        "ingredient_statuses": {
+          "linked": 6537,
+          "group": 377,
+          "unresolved": 45
+        },
+        "linking_statuses": {
+          "complete": 3304,
+          "partial": 105
+        }
+      },
+      "drop_counts": {
+        "item_statuses": {
+          "linked": 3131,
+          "unresolved": 8,
+          "group": 5
+        },
+        "source_statuses": {
+          "linked": 1368,
+          "unresolved": 2,
+          "classified": 1694,
+          "group": 80
+        },
+        "linking_statuses": {
+          "complete": 3134,
+          "partial": 10
+        }
+      },
+      "reference_integrity": {
+        "resolved_references_total": 14353,
+        "dangling_item_references": 0,
+        "dangling_npc_references": 0,
+        "mismatched_item_references": 0,
+        "mismatched_npc_references": 0
+      }
+    },
+    "database_counts": {
+      "items": 6283,
+      "npcs": 770,
+      "recipes": 3409,
+      "recipe_variants": 4221,
+      "recipe_stations": 4221,
+      "recipe_ingredients": 6959,
+      "drops": 3144
+    }
+  }
+}

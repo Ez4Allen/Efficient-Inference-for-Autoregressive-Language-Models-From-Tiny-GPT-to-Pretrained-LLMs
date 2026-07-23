@@ -1,0 +1,5 @@
+-r requirements.txt
+
+# QLoRA training dependencies
+peft>=0.12
+bitsandbytes>=0.46; platform_system == "Linux"

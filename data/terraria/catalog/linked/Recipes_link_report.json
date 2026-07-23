@@ -1,7 +1,7 @@
 {
-  "items_path": "/content/llm_project/data/terraria/catalog/cleaned/Items.jsonl",
-  "recipes_path": "/content/llm_project/data/terraria/catalog/cleaned/Recipes.jsonl",
-  "output_path": "/content/llm_project/data/terraria/catalog/linked/Recipes.jsonl",
+  "items_path": "data/terraria/catalog/cleaned/Items.jsonl",
+  "recipes_path": "data/terraria/catalog/cleaned/Recipes.jsonl",
+  "output_path": "data/terraria/catalog/linked/Recipes.jsonl",
   "item_records": 6283,
   "recipe_records": 3409,
   "complete_records": 3304,

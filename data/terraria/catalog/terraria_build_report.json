@@ -1,34 +1,36 @@
 {
   "status": "passed",
-  "project_root": "/content/llm_project",
-  "catalog_root": "/content/llm_project/data/terraria/catalog",
-  "database_path": "/content/llm_project/data/terraria/catalog/terraria_query.sqlite3",
+  "catalog_root": "data/terraria/catalog",
+  "database_path": "data/terraria/catalog/terraria_query.sqlite3",
+  "strict_snapshot": true,
+  "snapshot_manifest": "data/terraria/catalog/snapshot_manifest.json",
+  "snapshot_manifest_sha256": "6d6036b4f88f5608cac411d4ec42683377fb5597f437266059184d7338c182a0",
   "inputs": {
-    "items": "/content/llm_project/data/terraria/catalog/cleaned/Items.jsonl",
-    "npcs": "/content/llm_project/data/terraria/catalog/cleaned/NPCs.jsonl",
-    "recipes": "/content/llm_project/data/terraria/catalog/cleaned/Recipes.jsonl",
-    "drops": "/content/llm_project/data/terraria/catalog/cleaned/Drops.jsonl"
+    "items": "data/terraria/catalog/cleaned/Items.jsonl",
+    "npcs": "data/terraria/catalog/cleaned/NPCs.jsonl",
+    "recipes": "data/terraria/catalog/cleaned/Recipes.jsonl",
+    "drops": "data/terraria/catalog/cleaned/Drops.jsonl"
   },
   "outputs": {
-    "linked_recipes": "/content/llm_project/data/terraria/catalog/linked/Recipes.jsonl",
-    "linked_drops": "/content/llm_project/data/terraria/catalog/linked/Drops.jsonl",
-    "integrity_report": "/content/llm_project/data/terraria/catalog/linked/catalog_integrity_report.json",
-    "query_database": "/content/llm_project/data/terraria/catalog/terraria_query.sqlite3",
-    "query_database_report": "/content/llm_project/data/terraria/catalog/terraria_query_report.json"
+    "linked_recipes": "data/terraria/catalog/linked/Recipes.jsonl",
+    "linked_drops": "data/terraria/catalog/linked/Drops.jsonl",
+    "integrity_report": "data/terraria/catalog/linked/catalog_integrity_report.json",
+    "query_database": "data/terraria/catalog/terraria_query.sqlite3",
+    "query_database_report": "data/terraria/catalog/terraria_query_report.json"
   },
   "timings_seconds": {
-    "link_recipes": 0.9238,
-    "link_drops": 0.8373,
-    "integrity_audit": 1.2642,
-    "query_database": 3.1041,
-    "total": 6.1302
+    "link_recipes": 1.068,
+    "link_drops": 0.924,
+    "integrity_audit": 1.3422,
+    "query_database": 3.954,
+    "total": 7.2885
   },
   "summary": {
     "linked_recipe_records": 3409,
     "linked_drop_records": 3144,
     "resolved_references": 14353,
-    "database_size_bytes": 94789632,
-    "database_sha256": "5cc4e650e9a4014d6395f148984e1d8f463f279f3a26bc8da9367efbf37f658e",
+    "database_size_bytes": 40611840,
+    "database_sha256": "198fca6a712c027637595e47e95b6ce96737a92afaf0135381ad8227ce954f46",
     "fts_enabled": true
   }
 }

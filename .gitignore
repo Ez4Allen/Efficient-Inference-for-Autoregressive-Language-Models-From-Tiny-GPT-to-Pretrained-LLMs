@@ -37,7 +37,7 @@ results/
 /checkpoints
 /checkpoints/
 
-# Track small Terraria datasets
+# Track compact Terraria training/evaluation datasets
 !data/terraria/
 !data/terraria/*.jsonl
 
@@ -53,10 +53,6 @@ data/terraria/catalog/**/*.jsonl
 # Temporary migration and backup artifacts
 data/terraria/catalog_backup_*/
 *.bak
-
-# Keep the small curated Terraria knowledge files
-!data/terraria/structured/
-!data/terraria/structured/*.jsonl
 
 # Keep one cleaned Terraria catalog snapshot in Git
 !data/terraria/catalog/cleaned/

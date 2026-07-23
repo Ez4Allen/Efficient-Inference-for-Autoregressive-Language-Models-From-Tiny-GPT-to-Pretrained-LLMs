@@ -4,25 +4,13 @@ from __future__ import annotations
 import argparse
 import inspect
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 import torch
 import yaml
-from peft import (
-    LoraConfig,
-    TaskType,
-    get_peft_model,
-    prepare_model_for_kbit_training,
-)
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    BitsAndBytesConfig,
-    Trainer,
-    TrainingArguments,
-    set_seed,
-)
+from src.utils.paths import PROJECT_ROOT, resolve_project_path
 
 from src.data.sft_dataset import (
     SFTDataCollator,
@@ -82,6 +70,60 @@ def require_value(
         )
 
     return section[key]
+
+
+def resolve_model_reference(value: str | Path) -> str:
+    """Resolve a local model path while preserving Hugging Face model IDs."""
+
+    raw_value = str(value)
+    expanded = os.path.expandvars(os.path.expanduser(raw_value))
+    if "$" in expanded:
+        raise ValueError(
+            f"Model reference contains an unresolved environment variable: "
+            f"{raw_value}"
+        )
+    candidate = Path(expanded)
+
+    if candidate.is_absolute():
+        return str(candidate.resolve())
+
+    project_candidate = PROJECT_ROOT / candidate
+    if expanded.startswith(".") or project_candidate.exists():
+        return str(project_candidate.resolve())
+
+    return expanded
+
+
+def validate_training_config(training_config: dict[str, Any]) -> None:
+    """Reject invalid batch, step, and warmup values before model loading."""
+
+    positive_integer_fields = (
+        "per_device_train_batch_size",
+        "per_device_eval_batch_size",
+        "gradient_accumulation_steps",
+        "logging_steps",
+        "save_steps",
+        "save_total_limit",
+        "dataloader_num_workers",
+    )
+    for field in positive_integer_fields:
+        if field not in training_config:
+            continue
+        value = int(training_config[field])
+        minimum = 0 if field == "dataloader_num_workers" else 1
+        if value < minimum:
+            raise ValueError(f"training.{field} must be >= {minimum}.")
+
+    if float(training_config.get("learning_rate", 1e-4)) <= 0:
+        raise ValueError("training.learning_rate must be greater than zero.")
+
+    if "warmup_steps" in training_config:
+        if int(training_config["warmup_steps"]) < 0:
+            raise ValueError("training.warmup_steps cannot be negative.")
+    else:
+        ratio = float(training_config.get("warmup_ratio", 0.0))
+        if not 0.0 <= ratio < 1.0:
+            raise ValueError("training.warmup_ratio must be in [0, 1).")
 
 
 def resolve_compute_dtype(
@@ -201,7 +243,7 @@ def build_training_arguments(
     training_config: dict[str, Any],
     compute_dtype: torch.dtype,
     has_validation: bool,
-) -> TrainingArguments:
+) -> Any:
     """
     Build TrainingArguments.
 
@@ -210,11 +252,21 @@ def build_training_arguments(
     evaluation_strategy.
     """
 
+    try:
+        from transformers import TrainingArguments
+    except ImportError as error:
+        raise RuntimeError(
+            "SFT training requires the optional training dependencies. "
+            "Install them with: pip install -r requirements-training.txt"
+        ) from error
+
     output_dir = str(
-        require_value(
-            training_config,
-            "output_dir",
-            "training",
+        resolve_project_path(
+            require_value(
+                training_config,
+                "output_dir",
+                "training",
+            )
         )
     )
 
@@ -265,15 +317,6 @@ def build_training_arguments(
             training_config.get(
                 "weight_decay",
                 0.0,
-            )
-        ),
-        "warmup_steps": float(
-            training_config.get(
-                "warmup_steps",
-                training_config.get(
-                    "warmup_ratio",
-                    0.0,
-                ),
             )
         ),
         "lr_scheduler_type": str(
@@ -346,6 +389,15 @@ def build_training_arguments(
         "save_safetensors": True,
     }
 
+    if "warmup_steps" in training_config:
+        arguments["warmup_steps"] = int(
+            training_config["warmup_steps"]
+        )
+    else:
+        arguments["warmup_ratio"] = float(
+            training_config.get("warmup_ratio", 0.0)
+        )
+
     signature = inspect.signature(
         TrainingArguments.__init__
     )
@@ -393,6 +445,14 @@ def load_tokenizer(
 ):
     """Load and configure the tokenizer."""
 
+    try:
+        from transformers import AutoTokenizer
+    except ImportError as error:
+        raise RuntimeError(
+            "Tokenizer loading requires transformers. "
+            "Install the project runtime dependencies first."
+        ) from error
+
     local_files_only = Path(
         model_name_or_path
     ).exists()
@@ -427,13 +487,27 @@ def load_qlora_model(
 ):
     """Load a 4-bit base model and attach LoRA adapters."""
 
+    try:
+        from peft import (
+            LoraConfig,
+            TaskType,
+            get_peft_model,
+            prepare_model_for_kbit_training,
+        )
+        from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+    except ImportError as error:
+        raise RuntimeError(
+            "QLoRA training requires PEFT, Transformers, and bitsandbytes. "
+            "Install them with: pip install -r requirements-training.txt"
+        ) from error
+
     if not torch.cuda.is_available():
         raise RuntimeError(
             "QLoRA training requires a CUDA GPU "
             "in this training script"
         )
 
-    model_name_or_path = str(
+    model_name_or_path = resolve_model_reference(
         require_value(
             model_config,
             "model_name_or_path",
@@ -602,6 +676,14 @@ def train(
 ) -> None:
     """Run one generic QLoRA SFT experiment."""
 
+    try:
+        from transformers import Trainer, set_seed
+    except ImportError as error:
+        raise RuntimeError(
+            "SFT training requires Transformers. "
+            "Install the training dependencies first."
+        ) from error
+
     config_path = Path(config_path)
     config = load_yaml(config_path)
 
@@ -625,13 +707,14 @@ def train(
         config,
         "training",
     )
+    validate_training_config(training_config)
 
     seed = int(
         training_config.get("seed", 42)
     )
     set_seed(seed)
 
-    model_name_or_path = str(
+    model_name_or_path = resolve_model_reference(
         require_value(
             model_config,
             "model_name_or_path",
@@ -659,10 +742,12 @@ def train(
     )
 
     train_path = str(
-        require_value(
-            data_config,
-            "train_path",
-            "data",
+        resolve_project_path(
+            require_value(
+                data_config,
+                "train_path",
+                "data",
+            )
         )
     )
 
@@ -676,6 +761,8 @@ def train(
             512,
         )
     )
+    if max_length < 2:
+        raise ValueError("data.max_length must be at least 2.")
 
     print("\n=== Loading Datasets ===")
 
@@ -689,7 +776,7 @@ def train(
 
     if validation_path_value:
         validation_dataset = SFTJsonlDataset(
-            path=str(validation_path_value),
+            path=str(resolve_project_path(validation_path_value)),
             tokenizer=tokenizer,
             max_length=max_length,
         )
@@ -725,14 +812,20 @@ def train(
         ),
     )
 
-    trainer = Trainer(
-        model=model,
-        args=training_arguments,
-        train_dataset=train_dataset,
-        eval_dataset=validation_dataset,
-        data_collator=data_collator,
-        processing_class=tokenizer,
-    )
+    trainer_arguments: dict[str, Any] = {
+        "model": model,
+        "args": training_arguments,
+        "train_dataset": train_dataset,
+        "eval_dataset": validation_dataset,
+        "data_collator": data_collator,
+    }
+    trainer_signature = inspect.signature(Trainer.__init__)
+    if "processing_class" in trainer_signature.parameters:
+        trainer_arguments["processing_class"] = tokenizer
+    elif "tokenizer" in trainer_signature.parameters:
+        trainer_arguments["tokenizer"] = tokenizer
+
+    trainer = Trainer(**trainer_arguments)
 
     output_dir = Path(
         training_arguments.output_dir
@@ -753,10 +846,14 @@ def train(
 
     print("\n=== Starting Training ===")
 
+    resolved_resume_checkpoint = (
+        str(resolve_project_path(resume_from_checkpoint))
+        if resume_from_checkpoint
+        else None
+    )
+
     train_result = trainer.train(
-        resume_from_checkpoint=(
-            resume_from_checkpoint
-        )
+        resume_from_checkpoint=resolved_resume_checkpoint
     )
 
     print("\n=== Final Evaluation ===")

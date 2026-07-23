@@ -10,6 +10,8 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
+from src.utils.paths import portable_path, TERRARIA_CATALOG_ROOT, TERRARIA_CLEANED_ROOT
+
 from ..catalog_store import normalize_catalog_name
 from .common import (
     normalize_whitespace,
@@ -19,20 +21,13 @@ from .common import (
 )
 
 
-DEFAULT_INPUT_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/normalized/Drops.jsonl"
+DEFAULT_INPUT_PATH = (
+    TERRARIA_CATALOG_ROOT / "normalized" / "Drops.jsonl"
 )
 
-DEFAULT_OUTPUT_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/cleaned/Drops.jsonl"
-)
+DEFAULT_OUTPUT_PATH = TERRARIA_CLEANED_ROOT / "Drops.jsonl"
 
-DEFAULT_REPORT_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/cleaned/Drops_report.json"
-)
+DEFAULT_REPORT_PATH = TERRARIA_CLEANED_ROOT / "Drops_report.json"
 
 
 _MODE_NAMES = (
@@ -1037,8 +1032,8 @@ def clean_drops_file(
     )
 
     report = {
-        "input_path": str(input_path),
-        "output_path": str(output_path),
+        "input_path": portable_path(input_path),
+        "output_path": portable_path(output_path),
 
         "total_records": total_records,
         "ok_records": ok_records,

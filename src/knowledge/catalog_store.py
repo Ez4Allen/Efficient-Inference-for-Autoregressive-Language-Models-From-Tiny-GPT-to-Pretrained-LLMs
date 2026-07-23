@@ -10,10 +10,11 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
+from src.utils.paths import TERRARIA_CATALOG_ROOT
 
-DEFAULT_CATALOG_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/terraria_catalog.sqlite3"
+
+DEFAULT_CATALOG_PATH = (
+    TERRARIA_CATALOG_ROOT / "terraria_catalog.sqlite3"
 )
 
 

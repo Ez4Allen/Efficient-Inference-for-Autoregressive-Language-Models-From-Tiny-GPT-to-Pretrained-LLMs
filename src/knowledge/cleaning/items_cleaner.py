@@ -8,6 +8,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from src.utils.paths import portable_path, TERRARIA_CLEANED_ROOT, TERRARIA_CATALOG_ROOT
+
 from ..catalog_store import normalize_catalog_name
 from .common import (
     normalize_whitespace,
@@ -20,20 +22,13 @@ from .common import (
 )
 
 
-DEFAULT_INPUT_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/normalized/Items.jsonl"
+DEFAULT_INPUT_PATH = (
+    TERRARIA_CATALOG_ROOT / "normalized" / "Items.jsonl"
 )
 
-DEFAULT_OUTPUT_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/cleaned/Items.jsonl"
-)
+DEFAULT_OUTPUT_PATH = TERRARIA_CLEANED_ROOT / "Items.jsonl"
 
-DEFAULT_REPORT_PATH = Path(
-    "/content/llm_project/data/terraria/"
-    "catalog/cleaned/Items_report.json"
-)
+DEFAULT_REPORT_PATH = TERRARIA_CLEANED_ROOT / "Items_report.json"
 
 
 def _is_empty(
@@ -1198,8 +1193,8 @@ def clean_items_file(
     )
 
     report = {
-        "input_path": str(input_path),
-        "output_path": str(output_path),
+        "input_path": portable_path(input_path),
+        "output_path": portable_path(output_path),
 
         "total_records": total_records,
         "ok_records": ok_records,

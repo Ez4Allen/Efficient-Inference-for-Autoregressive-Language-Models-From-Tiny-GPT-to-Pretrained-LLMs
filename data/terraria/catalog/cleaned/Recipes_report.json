@@ -1,6 +1,6 @@
 {
-  "input_path": "/content/llm_project/data/terraria/catalog/normalized/recipes_grouped.jsonl",
-  "output_path": "/content/llm_project/data/terraria/catalog/cleaned/Recipes.jsonl",
+  "input_path": "data/terraria/catalog/normalized/recipes_grouped.jsonl",
+  "output_path": "data/terraria/catalog/cleaned/Recipes.jsonl",
   "total_records": 3409,
   "ok_records": 3409,
   "partial_records": 0,
