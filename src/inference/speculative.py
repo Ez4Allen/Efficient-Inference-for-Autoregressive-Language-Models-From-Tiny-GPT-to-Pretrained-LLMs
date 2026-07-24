@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from time import perf_counter
+from collections.abc import Sequence
 from typing import Any
 
 import torch
@@ -35,6 +36,23 @@ def _synchronize_if_needed(device: torch.device) -> None:
         torch.cuda.synchronize(device)
 
 
+def _normalize_eos_token_ids(
+    eos_token_id: int | Sequence[int] | None,
+) -> tuple[int, ...]:
+    if eos_token_id is None:
+        return ()
+    if isinstance(eos_token_id, int):
+        return (eos_token_id,)
+    result = tuple(dict.fromkeys(int(value) for value in eos_token_id))
+    if not result:
+        raise ValueError("eos_token_id sequence cannot be empty.")
+    return result
+
+
+def _is_eos(token: torch.Tensor, eos_token_ids: tuple[int, ...]) -> bool:
+    return bool(eos_token_ids) and int(token.item()) in eos_token_ids
+
+
 def _crop_past_key_values(
     past_key_values: Any,
     sequence_length: int,
@@ -63,11 +81,12 @@ def _draft_propose(
     draft_model: Any,
     input_ids: torch.Tensor,
     num_tokens: int,
-    eos_token_id: int | None,
+    eos_token_id: int | Sequence[int] | None,
 ) -> tuple[torch.Tensor, int]:
     if num_tokens <= 0:
         raise ValueError("num_tokens must be greater than zero.")
 
+    eos_token_ids = _normalize_eos_token_ids(eos_token_id)
     proposed_tokens: list[torch.Tensor] = []
     forward_calls = 0
 
@@ -87,10 +106,7 @@ def _draft_propose(
 
     proposed_tokens.append(next_token)
 
-    if (
-        eos_token_id is not None
-        and next_token.item() == eos_token_id
-    ):
+    if _is_eos(next_token, eos_token_ids):
         return torch.cat(proposed_tokens, dim=1), forward_calls
 
     for _ in range(num_tokens - 1):
@@ -111,10 +127,7 @@ def _draft_propose(
 
         proposed_tokens.append(next_token)
 
-        if (
-            eos_token_id is not None
-            and next_token.item() == eos_token_id
-        ):
+        if _is_eos(next_token, eos_token_ids):
             break
 
     return torch.cat(proposed_tokens, dim=1), forward_calls
@@ -127,7 +140,7 @@ def greedy_speculative_decode(
     input_ids: torch.Tensor,
     max_new_tokens: int,
     draft_tokens_per_round: int = 4,
-    eos_token_id: int | None = None,
+    eos_token_id: int | Sequence[int] | None = None,
 ) -> SpeculativeOutput:
     if input_ids.ndim != 2:
         raise ValueError(
@@ -149,6 +162,7 @@ def greedy_speculative_decode(
             "draft_tokens_per_round must be greater than zero."
         )
 
+    eos_token_ids = _normalize_eos_token_ids(eos_token_id)
     device = input_ids.device
     prompt_length = input_ids.shape[1]
     current_ids = input_ids.clone()
@@ -273,10 +287,7 @@ def greedy_speculative_decode(
                 dim=1,
             )
 
-            if (
-                eos_token_id is not None
-                and correction_token.item() == eos_token_id
-            ):
+            if _is_eos(correction_token, eos_token_ids):
                 break
 
             if current_ids.shape[1] - prompt_length >= max_new_tokens:
@@ -301,10 +312,7 @@ def greedy_speculative_decode(
             accepted_draft_tokens += actual_proposal_length
             target_cache = verification_cache
 
-            if (
-                eos_token_id is not None
-                and draft_proposals[0, -1].item() == eos_token_id
-            ):
+            if _is_eos(draft_proposals[0, -1], eos_token_ids):
                 break
 
             generated_count = current_ids.shape[1] - prompt_length
@@ -323,10 +331,7 @@ def greedy_speculative_decode(
                 dim=1,
             )
 
-            if (
-                eos_token_id is not None
-                and bonus_token.item() == eos_token_id
-            ):
+            if _is_eos(bonus_token, eos_token_ids):
                 break
 
             bonus_outputs = target_model(

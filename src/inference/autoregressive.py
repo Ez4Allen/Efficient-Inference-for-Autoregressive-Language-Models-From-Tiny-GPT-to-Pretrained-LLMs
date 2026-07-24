@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from time import perf_counter
+from collections.abc import Sequence
 from typing import Any
 
 import torch
@@ -22,12 +23,25 @@ def _synchronize_if_needed(device: torch.device) -> None:
         torch.cuda.synchronize(device)
 
 
+def _normalize_eos_token_ids(
+    eos_token_id: int | Sequence[int] | None,
+) -> tuple[int, ...]:
+    if eos_token_id is None:
+        return ()
+    if isinstance(eos_token_id, int):
+        return (eos_token_id,)
+    result = tuple(dict.fromkeys(int(value) for value in eos_token_id))
+    if not result:
+        raise ValueError("eos_token_id sequence cannot be empty.")
+    return result
+
+
 @torch.inference_mode()
 def greedy_decode(
     model: Any,
     input_ids: torch.Tensor,
     max_new_tokens: int,
-    eos_token_id: int | None = None,
+    eos_token_id: int | Sequence[int] | None = None,
 ) -> AutoregressiveOutput:
     """
     Generate tokens using standard greedy autoregressive decoding.
@@ -44,6 +58,7 @@ def greedy_decode(
             "input_ids must have shape [batch_size, sequence_length]."
         )
 
+    eos_token_ids = _normalize_eos_token_ids(eos_token_id)
     generated_ids = input_ids
     new_token_ids: list[torch.Tensor] = []
 
@@ -96,8 +111,8 @@ def greedy_decode(
             keepdim=True,
         )
 
-        if eos_token_id is not None:
-            eos_fill = torch.full_like(next_token_id, eos_token_id)
+        if eos_token_ids:
+            eos_fill = torch.full_like(next_token_id, eos_token_ids[0])
             next_token_id = torch.where(
                 finished.unsqueeze(-1),
                 eos_fill,
@@ -113,8 +128,13 @@ def greedy_decode(
 
         past_key_values = outputs.past_key_values
 
-        if eos_token_id is not None:
-            finished |= next_token_id.squeeze(-1) == eos_token_id
+        if eos_token_ids:
+            eos_tensor = torch.tensor(
+                eos_token_ids,
+                dtype=next_token_id.dtype,
+                device=next_token_id.device,
+            )
+            finished |= torch.isin(next_token_id.squeeze(-1), eos_tensor)
             if bool(torch.all(finished)):
                 break
 

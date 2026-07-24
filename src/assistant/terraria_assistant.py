@@ -82,6 +82,8 @@ class TerrariaAssistant:
         if not self._closed:
             self.document_retriever.close()
             self.service.close()
+            if self.generator is not None and hasattr(self.generator, "close"):
+                self.generator.close()
             self._closed = True
 
     def answer(
@@ -161,15 +163,34 @@ class TerrariaAssistant:
             retrieval,
             language=selected_language,
         )
-        answer = (
-            self.generator.generate(context, fallback_answer)
-            if self.generator is not None
-            else fallback_answer
-        )
+        generator_error: str | None = None
+        if self.generator is None:
+            answer = fallback_answer
+        else:
+            try:
+                answer = self.generator.generate(context, fallback_answer)
+            except Exception as error:
+                generator_error = f"{type(error).__name__}: {error}"
+                answer = fallback_answer
         render_seconds = time.perf_counter() - render_started
 
+        generator_warnings = (
+            list(getattr(self.generator, "last_warnings", []) or [])
+            if self.generator is not None
+            else []
+        )
+        if generator_error:
+            generator_warnings.append(
+                "LLM generation raised an error; the deterministic grounded answer was used."
+            )
         warnings = list(dict.fromkeys(
-            [warning for warning in (retrieval.get("warnings") or []) if warning]
+            [
+                warning
+                for warning in (
+                    list(retrieval.get("warnings") or []) + generator_warnings
+                )
+                if warning
+            ]
         ))
         status = "clarification" if route.needs_clarification else str(retrieval.get("status", "unknown"))
         debug = {
@@ -178,10 +199,16 @@ class TerrariaAssistant:
                 "routing_and_resolution": round(route_seconds, 6),
                 "retrieval": round(retrieval_seconds, 6),
                 "context": round(context_seconds, 6),
-                "render": round(render_seconds, 6),
+                "render_or_generation": round(render_seconds, 6),
                 "total": round(time.perf_counter() - started, 6),
             },
         }
+        if self.generator is not None:
+            debug["generation"] = dict(
+                getattr(self.generator, "last_debug", {}) or {}
+            )
+        if generator_error:
+            debug["generation_error"] = generator_error
         if not include_debug:
             debug = {}
 
@@ -194,7 +221,7 @@ class TerrariaAssistant:
             facts=retrieval.get("facts"),
             warnings=warnings,
             candidates=list(retrieval.get("candidates") or route.candidates),
-            evidence=list(retrieval.get("provenance") or []),
+            evidence=list(context.evidence),
             route=route,
             context=context,
             debug=debug,

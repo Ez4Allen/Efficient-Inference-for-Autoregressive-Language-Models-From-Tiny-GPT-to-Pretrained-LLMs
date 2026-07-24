@@ -139,3 +139,33 @@ def test_greedy_decode_handles_per_sequence_eos_in_batches() -> None:
     )
 
     assert result.generated_token_ids.tolist() == [[2, 3], [3, 3]]
+
+
+def test_greedy_decode_accepts_multiple_eos_ids() -> None:
+    model = ToyCausalLM(offset=1)
+    prompt = torch.tensor([[1]], dtype=torch.long)
+
+    result = greedy_decode(
+        model,
+        prompt,
+        max_new_tokens=5,
+        eos_token_id=[2, 9],
+    )
+
+    assert result.generated_token_ids.tolist() == [[2]]
+
+
+def test_speculative_decode_accepts_multiple_eos_ids() -> None:
+    model = ToyCausalLM(offset=1)
+    prompt = torch.tensor([[1]], dtype=torch.long)
+
+    result = greedy_speculative_decode(
+        model,
+        model,
+        prompt,
+        max_new_tokens=5,
+        draft_tokens_per_round=3,
+        eos_token_id=[2, 9],
+    )
+
+    assert result.generated_token_ids.tolist() == [[2]]
