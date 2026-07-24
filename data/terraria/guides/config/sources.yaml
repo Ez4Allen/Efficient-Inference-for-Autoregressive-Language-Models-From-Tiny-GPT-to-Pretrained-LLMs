@@ -37,7 +37,6 @@ discovery:
     - Guide:Walkthrough
     - Guide:Class setups
     - Hardmode
-    - Guide:Boss strategies
     - Guide:Maintaining world purity
     - Guide:Armor progression
     - Guide:Practical tips
@@ -53,7 +52,6 @@ discovery:
     - Guide:Game progression
     - Guide:Walkthrough
     - Guide:Class setups
-    - Guide:Boss strategies
     - Guide:Maintaining world purity
     - Guide:Armor progression
     - Guide:Practical tips
@@ -74,7 +72,6 @@ discovery:
     - Potions
     - Buffs
     - Debuffs
-    - World status
 
   # Reference/catalog pages are still useful evidence, but they should not
   # outrank narrative guides for broad progression and strategy questions.

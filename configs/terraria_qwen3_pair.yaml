@@ -1,0 +1,37 @@
+# Paired text-only Qwen3 checkpoints selected for speculative decoding research.
+# Both are from the same Qwen3 model family and tokenizer compatibility is
+# verified at runtime before speculative generation starts.
+models:
+  draft:
+    model_name_or_path: Qwen/Qwen3-0.6B
+    adapter_path: null
+    trust_remote_code: false
+    local_files_only: false
+    load_in_4bit: false
+
+  target:
+    model_name_or_path: Qwen/Qwen3-4B
+    # A target-side PEFT adapter can be supplied after QLoRA training.
+    # It must have been trained from this exact target base checkpoint.
+    adapter_path: null
+    trust_remote_code: false
+    local_files_only: false
+    load_in_4bit: false
+
+runtime:
+  device: auto
+  dtype: auto
+
+generation:
+  # target: large-model autoregressive baseline
+  # draft: small-model quality/latency baseline
+  # speculative: correctness-first paired baseline, not yet optimized
+  engine: target
+  max_new_tokens: 256
+  draft_tokens_per_round: 4
+  enable_thinking: false
+
+grounding:
+  require_citations: true
+  fallback_on_error: true
+  max_answer_chars: 6000

@@ -1,25 +1,29 @@
-"""Model loading and compact reference-model APIs."""
+"""Model loading and runtime configuration."""
 
 from .loader import (
     ModelBundle,
     SpeculativeModelBundle,
-    get_parameter_count,
     load_causal_lm,
     load_speculative_models,
-    print_model_info,
-    resolve_device,
-    resolve_dtype,
     validate_tokenizer_compatibility,
+)
+from .runtime_config import (
+    GenerationConfig,
+    GroundingConfig,
+    ModelEndpointConfig,
+    QwenPairConfig,
+    load_qwen_pair_config,
 )
 
 __all__ = [
+    "GenerationConfig",
+    "GroundingConfig",
     "ModelBundle",
+    "ModelEndpointConfig",
+    "QwenPairConfig",
     "SpeculativeModelBundle",
-    "get_parameter_count",
     "load_causal_lm",
+    "load_qwen_pair_config",
     "load_speculative_models",
-    "print_model_info",
-    "resolve_device",
-    "resolve_dtype",
     "validate_tokenizer_compatibility",
 ]

@@ -88,9 +88,36 @@ python scripts/chat_terraria.py "装甲骷髅掉什么？" --mode expert
 python scripts/chat_terraria.py "What is Terra Blade?" --json
 ```
 
-`response.context.text` is an evidence-only prompt for an external LLM. A
-custom grounded generator can be injected while the deterministic renderer
-remains the fallback. See `docs/terraria_assistant.md`.
+`response.context.text` remains an evidence-only representation that can be
+inspected independently of model generation. The repository now also includes
+a native paired-Qwen runtime. It reuses the same model loader and custom
+autoregressive/speculative decoders while retaining the deterministic renderer
+as a safety fallback.
+
+### Paired Qwen3 LLM runtime
+
+The default pair is `Qwen/Qwen3-0.6B` as the draft and `Qwen/Qwen3-4B` as the
+target. Normal assistant use loads only the selected role; speculative mode
+loads both and verifies complete tokenizer compatibility first. No fine-tuning
+is required for the first run.
+
+```bash
+python scripts/build_terraria_knowledge.py --quiet
+python scripts/build_terraria_guides.py --offline
+
+python scripts/chat_terraria_llm.py \
+  "进入困难模式后该做什么？" \
+  --engine target \
+  --debug
+
+python scripts/smoke_qwen_pair.py \
+  --engines draft target speculative
+```
+
+The current speculative engine is a correctness-first baseline and deliberately
+keeps the existing unoptimized draft-prefix recomputation. This isolates the
+next project step: draft-cache reuse and measured TTFT/TPOT/throughput gains.
+See `docs/qwen_grounded_runtime.md`.
 
 ### Progression and mechanics guide corpus
 
