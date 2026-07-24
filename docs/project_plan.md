@@ -83,3 +83,18 @@ Next work:
 - Report TTFT, TPOT, throughput, memory, and tail latency
 - Compare baseline and speculative decoding under controlled tokenizer-compatible pairs
 - Record hardware, software versions, seeds, model revisions, and raw result artifacts
+
+## Milestone: Guide corpus and hybrid retrieval
+
+- [x] Official Wiki source manifest and attribution
+- [x] Guide-category and core-mechanics page discovery
+- [x] Rate-limited incremental MediaWiki import
+- [x] Section-aware HTML cleaning
+- [x] Paragraph-aware retrieval chunking
+- [x] Static quality audit and diagnostic bundle
+- [x] SQLite FTS5 guide index
+- [x] English/Chinese guide query expansion
+- [x] Assistant routing for progression, strategy, and mechanics
+- [ ] First live-crawl diagnostic review
+- [ ] Retrieval benchmark on held-out guide questions
+- [ ] Optional embedding/hybrid reranker comparison

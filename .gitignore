@@ -57,3 +57,15 @@ data/terraria/catalog_backup_*/
 # Keep one cleaned Terraria catalog snapshot in Git
 !data/terraria/catalog/cleaned/
 !data/terraria/catalog/cleaned/*.jsonl
+
+# Terraria generated guide-corpus artifacts
+# Source manifest, attribution, and README remain tracked.
+data/terraria/guides/raw/
+data/terraria/guides/cleaned/
+data/terraria/guides/chunks/
+data/terraria/guides/reports/*.json
+data/terraria/guides/*.sqlite3
+data/terraria/guides/*.zip
+
+# Generated guide diagnostic samples
+data/terraria/guides/reports/.diagnostic_samples/

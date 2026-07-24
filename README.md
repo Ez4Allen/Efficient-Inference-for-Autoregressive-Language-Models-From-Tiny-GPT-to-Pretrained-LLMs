@@ -3,7 +3,7 @@
 This repository contains two related engineering tracks:
 
 1. **Autoregressive inference experiments** — tiny GPT training, prefill/decode measurement, scheduling simulation, and speculative decoding.
-2. **Terraria structured knowledge** — a reproducible catalog pipeline that links Items, NPCs, Recipes, and Drops, validates references, builds an indexed SQLite database, and exposes deterministic query APIs.
+2. **Terraria grounded knowledge** — a reproducible structured catalog for Items, NPCs, Recipes, and Drops plus a locally indexed Official Wiki guide corpus for progression and mechanics questions.
 
 ## Quick start
 
@@ -91,6 +91,35 @@ python scripts/chat_terraria.py "What is Terra Blade?" --json
 `response.context.text` is an evidence-only prompt for an external LLM. A
 custom grounded generator can be injected while the deterministic renderer
 remains the fallback. See `docs/terraria_assistant.md`.
+
+### Progression and mechanics guide corpus
+
+The Assistant can also route progression, strategy, class-setup, arena,
+housing, biome-spread, and other mechanics questions to a local document
+retriever. The corpus is discovered from the Official Terraria Wiki's Guide
+category plus explicitly configured core mechanics pages.
+
+```bash
+python scripts/build_terraria_guides.py
+python scripts/query_terraria_guides.py   "What should I do after entering Hardmode?"
+python scripts/chat_terraria.py   "进入困难模式后该做什么？"
+```
+
+The pipeline stores raw API responses, cleaned section-aware documents,
+retrieval chunks, quality reports, and a local SQLite FTS5 database under
+`data/terraria/guides/`. Generated text and SQLite artifacts are ignored by
+Git; the source manifest and attribution file are tracked.
+
+To prepare a lightweight review bundle after a live crawl:
+
+```bash
+python scripts/package_terraria_guide_diagnostics.py
+```
+
+Upload the resulting `terraria_guide_diagnostics.zip` for cleaning review. It
+contains reports and bounded samples, not the full raw corpus.
+
+See `docs/terraria_guides.md` for source, license, quality, and update details.
 
 ## Inference experiments
 
@@ -182,17 +211,21 @@ src/data/                    Dataset and prompt utilities
 src/evaluation/              Benchmark and evaluation code
 src/inference/               Autoregressive and speculative decoding
 src/knowledge/               Terraria cleaning, linking, query, and fact APIs
+src/retrieval/               Wiki import, cleaning, chunking, FTS, and guide retrieval
 src/models/                  Model loaders and tiny GPT implementation
 src/optimization/            Scheduling and simulation experiments
 src/training/                SFT/QLoRA training
 src/utils/                   Shared utilities and path discovery
 tests/                       Unit and integration tests
-data/terraria/catalog/       Cleaned snapshot, manifest, and build reports
+data/terraria/catalog/       Cleaned structured snapshot and build reports
+data/terraria/guides/        Guide source manifest, attribution, and generated corpus
 ```
 
 ## Data policy
 
 The cleaned Terraria snapshot is tracked as a reproducible backup. Raw,
 normalized, linked, and SQLite build artifacts are ignored because they can be
-regenerated. Source attribution is recorded in
-`data/terraria/catalog/ATTRIBUTION.md`.
+regenerated. The generated Wiki guide corpus is also ignored by default; its
+manifest and attribution are tracked. Source attribution is recorded in
+`data/terraria/catalog/ATTRIBUTION.md` and
+`data/terraria/guides/ATTRIBUTION.md`.

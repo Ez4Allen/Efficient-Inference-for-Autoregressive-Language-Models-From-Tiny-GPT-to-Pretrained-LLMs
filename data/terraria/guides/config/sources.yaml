@@ -1,0 +1,114 @@
+version: 1
+wiki:
+  name: Official Terraria Wiki
+  api_url: https://terraria.wiki.gg/api.php
+  article_base_url: https://terraria.wiki.gg/wiki/
+  language: en
+  license:
+    name: CC BY-NC-SA 4.0
+    url: https://creativecommons.org/licenses/by-nc-sa/4.0/
+    attribution_url: https://terraria.wiki.gg/wiki/Terraria_Wiki:Copyrights
+  request:
+    user_agent: EfficientInferenceTerrariaResearch/0.5 (+https://github.com/Ez4Allen/Efficient-Inference-for-Autoregressive-Language-Models-From-Tiny-GPT-to-Pretrained-LLMs)
+    timeout_seconds: 30
+    request_delay_seconds: 0.35
+    max_retries: 4
+    checkpoint_every: 5
+
+discovery:
+  guide_categories:
+    - Category:Guides
+  quality_categories:
+    revised: Category:Revised Guides
+    under_revision: Category:Guides under revision
+    subject_to_revision: Category:Guides subject to revision
+  include_title_prefixes:
+    - "Guide:"
+  exclude_title_prefixes:
+    - "Legacy:"
+    - "Terraria Wiki:"
+  exclude_titles: []
+
+  # Ordered before the remaining discovered pages. This makes --max-pages a
+  # useful smoke test instead of an alphabetical sample of reference pages.
+  priority_pages:
+    - Guide:Getting started
+    - Guide:Game progression
+    - Guide:Walkthrough
+    - Guide:Class setups
+    - Hardmode
+    - Guide:Boss strategies
+    - Guide:Maintaining world purity
+    - Guide:Armor progression
+    - Guide:Practical tips
+    - House
+    - NPC happiness
+    - Fishing
+    - Shimmer
+    - Expert Mode
+    - Master Mode
+
+  explicit_pages:
+    - Guide:Getting started
+    - Guide:Game progression
+    - Guide:Walkthrough
+    - Guide:Class setups
+    - Guide:Boss strategies
+    - Guide:Maintaining world purity
+    - Guide:Armor progression
+    - Guide:Practical tips
+    - Hardmode
+    - Bosses
+    - House
+    - NPC happiness
+    - Fishing
+    - Shimmer
+    - Expert Mode
+    - Master Mode
+    - Pylons
+    - Town NPCs
+    - Events
+    - Biomes
+    - Armor
+    - Weapons
+    - Potions
+    - Buffs
+    - Debuffs
+    - World status
+
+  # Reference/catalog pages are still useful evidence, but they should not
+  # outrank narrative guides for broad progression and strategy questions.
+  reference_pages:
+    - Armor
+    - Weapons
+    - Potions
+    - Buffs
+    - Debuffs
+    - Biomes
+    - Bosses
+    - Events
+    - Town NPCs
+    - Pylons
+
+cleaning:
+  excluded_sections:
+    - References
+    - Notes
+    - History
+    - See also
+    - External links
+    - Footnotes
+    - Gallery
+  minimum_document_characters: 200
+  minimum_section_characters: 40
+
+chunking:
+  maximum_characters: 1800
+  overlap_characters: 180
+  minimum_characters: 120
+  table_maximum_characters: 1200
+
+index:
+  default_result_limit: 6
+  candidate_multiplier: 10
+  minimum_score: 0.18

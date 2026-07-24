@@ -35,3 +35,17 @@ repository.
 GPU checkpoint benchmarks and QLoRA training were not executed here because they require
 external model checkpoints and a suitable CUDA environment. Their command paths and input
 validation were implemented and compile-tested.
+
+## 0.5.0 — Local Terraria guide retrieval
+
+- Added a rate-limited Official Terraria Wiki MediaWiki importer.
+- Added category-driven page discovery, explicit core mechanics pages, revision
+  caching, and resumable raw snapshots.
+- Added section-aware HTML cleaning, paragraph-aware chunking, static quality
+  auditing, and SQLite FTS5 indexing.
+- Added deterministic English/Chinese query expansion and guide retrieval.
+- Integrated progression/mechanics routing into `TerrariaAssistant` while
+  retaining `TerrariaFactService` for structured Item/NPC/Recipe/Drop queries.
+- Added source URLs, revision IDs, quality flags, license metadata, and
+  evidence-preserving extractive rendering.
+- Added a diagnostic bundle command for post-crawl cleaning review.

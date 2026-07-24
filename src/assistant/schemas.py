@@ -17,6 +17,7 @@ class AssistantIntent(str, Enum):
     DROPS_FOR_ITEM = "drops_for_item"
     DROPS_FROM_SOURCE = "drops_from_source"
     SEARCH = "search"
+    GUIDE = "guide"
     UNKNOWN = "unknown"
 
 

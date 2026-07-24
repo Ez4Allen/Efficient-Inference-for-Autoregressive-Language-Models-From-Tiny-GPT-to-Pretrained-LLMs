@@ -105,3 +105,35 @@ This first assistant release answers structured Item, NPC, Recipe, and Drop
 questions. Long-form progression and mechanics questions such as "What should I
 do on the first night?" require a separate document-retrieval corpus and are
 intentionally not answered from unsupported structured evidence.
+
+## Guide-corpus retrieval
+
+The Assistant uses two evidence channels:
+
+- `TerrariaFactService` for Items, NPCs, Recipes, reverse Recipes, and Drops;
+- `GuideDocumentStore` for progression, strategy, class setup, arena,
+  housing, biome-spread, and other mechanics questions.
+
+Build the guide corpus separately because it requires network access and
+retains source/license metadata:
+
+```bash
+python scripts/build_terraria_guides.py
+```
+
+Then natural-language guide questions are routed automatically:
+
+```python
+with TerrariaAssistant() as assistant:
+    response = assistant.answer(
+        "What should I do after entering Hardmode?"
+    )
+```
+
+If the guide database is absent or retrieval confidence is below the configured
+threshold, the Assistant refuses to invent advice. Deterministic mode returns
+extractive evidence with page/section URLs; an injected grounded generator can
+synthesize the same evidence into a more fluent answer.
+
+See `docs/terraria_guides.md` for ingestion, licensing, quality flags, and the
+diagnostic review workflow.

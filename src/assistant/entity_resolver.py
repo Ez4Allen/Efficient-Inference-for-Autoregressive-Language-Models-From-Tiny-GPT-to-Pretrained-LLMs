@@ -113,7 +113,10 @@ class EntityResolver:
         return resolved
 
     def resolve(self, decision: RouteDecision) -> RouteDecision:
-        if not decision.entity or decision.intent == AssistantIntent.UNKNOWN:
+        if not decision.entity or decision.intent in {
+            AssistantIntent.UNKNOWN,
+            AssistantIntent.GUIDE,
+        }:
             return decision
 
         entity = decision.entity
