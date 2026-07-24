@@ -10,10 +10,13 @@ from typing import Any
 from src.knowledge.pipeline import build_terraria_knowledge
 from src.knowledge.terraria_fact_service import TerrariaFactService
 from src.knowledge.terraria_query_store import DEFAULT_DATABASE_PATH
+from src.retrieval.guide_database import DEFAULT_GUIDE_DATABASE_PATH
 
 from .context_builder import ContextBuilder
+from .document_retriever import DocumentRetriever
 from .generator import GroundedAnswerGenerator
 from .entity_resolver import EntityResolver
+from .hybrid_retriever import HybridRetriever
 from .intent_router import IntentRouter
 from .renderer import DeterministicAnswerRenderer
 from .retriever import StructuredRetriever
@@ -27,6 +30,7 @@ class TerrariaAssistant:
         self,
         database_path: str | Path = DEFAULT_DATABASE_PATH,
         *,
+        guide_database_path: str | Path = DEFAULT_GUIDE_DATABASE_PATH,
         auto_build: bool = False,
         router: IntentRouter | None = None,
         renderer: DeterministicAnswerRenderer | None = None,
@@ -49,9 +53,15 @@ class TerrariaAssistant:
             )
 
         self.service = TerrariaFactService(self.database_path)
+        self.guide_database_path = Path(guide_database_path).expanduser().resolve()
         self.router = router or IntentRouter()
         self.resolver = EntityResolver(self.service)
-        self.retriever = StructuredRetriever(self.service)
+        self.structured_retriever = StructuredRetriever(self.service)
+        self.document_retriever = DocumentRetriever(self.guide_database_path)
+        self.retriever = HybridRetriever(
+            self.structured_retriever,
+            self.document_retriever,
+        )
         self.renderer = renderer or DeterministicAnswerRenderer()
         self.context_builder = context_builder or ContextBuilder()
         self.generator = generator
@@ -70,6 +80,7 @@ class TerrariaAssistant:
 
     def close(self) -> None:
         if not self._closed:
+            self.document_retriever.close()
             self.service.close()
             self._closed = True
 
@@ -81,6 +92,8 @@ class TerrariaAssistant:
         preferred_only: bool = True,
         include_partial: bool = True,
         language: str = "auto",
+        guide_limit: int = 6,
+        guide_minimum_score: float = 0.14,
         include_debug: bool = False,
     ) -> AssistantResponse:
         self._ensure_open()
@@ -100,6 +113,12 @@ class TerrariaAssistant:
 
         route_started = time.perf_counter()
         route = self.router.route(request)
+        if route.intent.value == "guide":
+            route.parameters["guide_limit"] = max(1, min(int(guide_limit), 20))
+            route.parameters["guide_minimum_score"] = max(
+                0.0,
+                min(float(guide_minimum_score), 1.0),
+            )
         route = self.resolver.resolve(route)
         route_seconds = time.perf_counter() - route_started
 

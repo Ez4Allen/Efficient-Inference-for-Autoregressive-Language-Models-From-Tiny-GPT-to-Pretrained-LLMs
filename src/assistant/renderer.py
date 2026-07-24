@@ -83,6 +83,16 @@ class DeterministicAnswerRenderer:
                 return f"没有找到精确匹配。可能的候选是：{_join(names, language='zh')}。"
             return f"No exact match was found. Possible matches: {_join(names, language='en')}."
         entity = route.entity or "该查询"
+        if route.intent == AssistantIntent.GUIDE:
+            if language == "zh":
+                return (
+                    "本地 Terraria 攻略语料库没有检索到足够相关的证据，"
+                    "因此我不会编造进度或机制建议。"
+                )
+            return (
+                "The local Terraria guide corpus contains no sufficiently relevant "
+                "evidence, so I will not invent progression or mechanics advice."
+            )
         if language == "zh":
             return f"当前 Terraria 目录没有找到“{entity}”的可用结构化证据，我不会据此编造答案。"
         return f"The Terraria catalog contains no usable structured evidence for {entity!r}, so I will not invent an answer."
@@ -238,6 +248,45 @@ class DeterministicAnswerRenderer:
             lines.append((f"仅显示前 {self.max_entries} 条。" if language == "zh" else f"Only the first {self.max_entries} records are shown."))
         return "\n".join(lines)
 
+    def _render_guide(self, facts: dict[str, Any], language: str) -> str:
+        hits = list(facts.get("hits") or [])
+        if not hits:
+            return (
+                "没有找到足够相关的本地攻略证据。"
+                if language == "zh"
+                else "No sufficiently relevant local guide evidence was found."
+            )
+        header = (
+            "以下是从本地 Terraria 攻略语料库检索到的相关证据："
+            if language == "zh"
+            else "Relevant evidence retrieved from the local Terraria guide corpus:"
+        )
+        lines = [header]
+        display_limit = min(self.max_entries, 4)
+        for index, hit in enumerate(hits[:display_limit], start=1):
+            title = hit.get("page_title") or "Untitled"
+            section = hit.get("section_title") or "Overview"
+            text = str(hit.get("text") or "").strip()
+            if len(text) > 700:
+                text = text[:697].rstrip() + "..."
+            score = hit.get("score")
+            score_label = f"{float(score):.3f}" if score is not None else "n/a"
+            if language == "zh":
+                lines.append(f"{index}. {title} — {section}（相关度 {score_label}）")
+                lines.append(text)
+                lines.append(f"来源：{hit.get('source_url')}")
+            else:
+                lines.append(f"{index}. {title} — {section} (score {score_label})")
+                lines.append(text)
+                lines.append(f"Source: {hit.get('source_url')}")
+        if len(hits) > display_limit:
+            lines.append(
+                f"另有 {len(hits) - display_limit} 条相关证据未展开。"
+                if language == "zh"
+                else f"{len(hits) - display_limit} additional evidence chunks were not expanded."
+            )
+        return "\n".join(lines)
+
     def _render_search(self, facts: dict[str, Any], language: str) -> str:
         items = list(facts.get("items") or [])
         npcs = list(facts.get("npcs") or [])
@@ -281,4 +330,6 @@ class DeterministicAnswerRenderer:
             return self._render_reverse_recipe(facts, language)
         if route.intent in {AssistantIntent.DROPS_FOR_ITEM, AssistantIntent.DROPS_FROM_SOURCE}:
             return self._render_drops(facts, route.intent, language)
+        if route.intent == AssistantIntent.GUIDE:
+            return self._render_guide(facts, language)
         return self._render_search(facts, language)

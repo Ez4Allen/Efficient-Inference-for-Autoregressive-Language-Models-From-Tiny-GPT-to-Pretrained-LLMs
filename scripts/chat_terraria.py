@@ -14,6 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.assistant import TerrariaAssistant
 from src.knowledge.terraria_query_store import DEFAULT_DATABASE_PATH
+from src.retrieval.guide_database import DEFAULT_GUIDE_DATABASE_PATH
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,6 +39,24 @@ def parse_args() -> argparse.Namespace:
         "--auto-build",
         action="store_true",
         help="Build the query database from the tracked cleaned snapshot if missing.",
+    )
+    parser.add_argument(
+        "--guides-database",
+        type=Path,
+        default=DEFAULT_GUIDE_DATABASE_PATH,
+        help="Path to terraria_guides.sqlite3 for progression/mechanics retrieval.",
+    )
+    parser.add_argument(
+        "--guide-limit",
+        type=int,
+        default=6,
+        help="Maximum guide evidence chunks for advice questions.",
+    )
+    parser.add_argument(
+        "--guide-minimum-score",
+        type=float,
+        default=0.14,
+        help="Minimum lexical retrieval score for guide evidence.",
     )
     parser.add_argument(
         "--mode",
@@ -86,6 +105,8 @@ def emit(assistant: TerrariaAssistant, question: str, args: argparse.Namespace) 
         preferred_only=not args.all_variants,
         include_partial=not args.exclude_partial,
         language=args.language,
+        guide_limit=args.guide_limit,
+        guide_minimum_score=args.guide_minimum_score,
         include_debug=args.debug,
     )
     if args.context:
@@ -110,6 +131,7 @@ def main() -> None:
     args = parse_args()
     with TerrariaAssistant(
         args.database,
+        guide_database_path=args.guides_database,
         auto_build=args.auto_build,
     ) as assistant:
         if args.question:

@@ -80,6 +80,62 @@ class IntentRouter:
                 0.99,
                 "explicit_npc_command",
             ),
+            RouteRule(
+                AssistantIntent.GUIDE,
+                re.compile(r"^\s*(?:guide|advice|progression|mechanics)\s*[:：]\s*(?P<entity>.+?)\s*$", flags),
+                0.99,
+                "explicit_guide_command",
+            ),
+            # Progression, strategy, and mechanics questions use the local
+            # document corpus rather than forcing an Item/NPC lookup.
+            RouteRule(
+                AssistantIntent.GUIDE,
+                re.compile(r"^\s*what\s+should\s+i\s+do\s+(?P<entity>.+?)\s*[?!.]*$", flags),
+                0.96,
+                "english_progression_question",
+            ),
+            RouteRule(
+                AssistantIntent.GUIDE,
+                re.compile(r"^\s*how\s+should\s+i\s+(?:prepare|progress|survive)\s+(?P<entity>.+?)\s*[?!.]*$", flags),
+                0.96,
+                "english_guide_question",
+            ),
+            RouteRule(
+                AssistantIntent.GUIDE,
+                re.compile(r"^\s*how\s+(?:do|can)\s+i\s+(?:beat|defeat|prepare\s+for|build\s+an?\s+arena\s+for|stop|control)\s+(?P<entity>.+?)\s*[?!.]*$", flags),
+                0.95,
+                "english_strategy_question",
+            ),
+            RouteRule(
+                AssistantIntent.GUIDE,
+                re.compile(r"^\s*(?:give|show)\s+(?:me\s+)?(?:a\s+)?guide\s+(?:for|to|about)\s+(?P<entity>.+?)\s*[?!.]*$", flags),
+                0.96,
+                "english_guide_question",
+            ),
+            RouteRule(
+                AssistantIntent.GUIDE,
+                re.compile(r"^\s*(?:what(?:'s|\s+is)\s+)?(?:the\s+)?(?:recommended|best)\s+(?P<entity>(?:boss|game|armor|weapon|class)\s+(?:progression|setup|route|order).+?)\s*[?!.]*$", flags),
+                0.93,
+                "english_progression_question",
+            ),
+            RouteRule(
+                AssistantIntent.GUIDE,
+                re.compile(r"^\s*(?P<entity>.+?)(?:怎么打|如何打|怎么准备|如何准备|攻略|流程|发展路线|配装|装备路线|职业路线|场地怎么建|竞技场怎么建)\s*[？?。!！]*$"),
+                0.95,
+                "chinese_guide_question",
+            ),
+            RouteRule(
+                AssistantIntent.GUIDE,
+                re.compile(r"^\s*(?:第一晚|第一天|开局|进入困难模式后|困难模式后|肉山后)(?P<entity>.*?)(?:做什么|该做什么|怎么办|怎么发展|如何发展)\s*[？?。!！]*$"),
+                0.97,
+                "chinese_progression_question",
+            ),
+            RouteRule(
+                AssistantIntent.GUIDE,
+                re.compile(r"^\s*(?:怎么|如何)(?:控制|阻止|防止|处理|建设|搭建|准备)\s*(?P<entity>.+?)\s*[？?。!！]*$"),
+                0.91,
+                "chinese_mechanics_question",
+            ),
             # Recipe questions.
             RouteRule(
                 AssistantIntent.RECIPE,
@@ -330,6 +386,8 @@ class IntentRouter:
             if not match:
                 continue
             entity = self._clean_entity(match.group("entity"))
+            if rule.intent == AssistantIntent.GUIDE and len(entity) <= 2:
+                entity = self._clean_entity(routing_question)
             if entity:
                 return RouteDecision(
                     intent=rule.intent,
@@ -338,6 +396,22 @@ class IntentRouter:
                     parameters=parameters,
                     reason_codes=[rule.reason_code],
                 )
+
+        guide_keywords = re.compile(
+            r"\b(?:guide|walkthrough|progression|strategy|strategies|class\s+setup|"
+            r"first\s+night|hardmode|arena|biome\s+spread|npc\s+happiness|housing)\b|"
+            r"攻略|流程|第一晚|第一天|开局|肉山后|困难模式|机械三王|职业路线|装备路线|"
+            r"配装|竞技场|场地|扩散|幸福度|房屋|钓鱼|微光",
+            flags=re.IGNORECASE,
+        )
+        if guide_keywords.search(routing_question):
+            return RouteDecision(
+                intent=AssistantIntent.GUIDE,
+                entity=self._clean_entity(routing_question) or routing_question,
+                confidence=0.82,
+                parameters=parameters,
+                reason_codes=["guide_keyword_fallback"],
+            )
 
         # Broad lookups are routed through catalog search so the resolver can
         # present Item/NPC/Recipe candidates rather than guessing a type.
