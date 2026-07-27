@@ -1,0 +1,39 @@
+
+version: 1
+conditions:
+  - name: deterministic_grounded
+    generator: deterministic
+    description: Retrieval plus deterministic evidence renderer.
+
+  - name: ungrounded_target
+    generator: ungrounded
+    engine: target
+    description: Qwen3-4B without retrieval; hallucination-control baseline.
+
+  - name: grounded_full_target
+    generator: grounded
+    engine: target
+    prompt_mode: evidence_only
+    evidence_policy: full
+    description: Qwen3-4B receives all retrieved evidence.
+
+  - name: grounded_compact_target
+    generator: grounded
+    engine: target
+    prompt_mode: evidence_only
+    evidence_policy: compact
+    description: Deployment-oriented evidence selection and compression.
+
+  - name: scaffolded_compact_target
+    generator: grounded
+    engine: target
+    prompt_mode: scaffolded
+    evidence_policy: compact
+    description: Ablation exposing the deterministic answer as an answer scaffold.
+
+  - name: grounded_compact_speculative
+    generator: grounded
+    engine: speculative
+    prompt_mode: evidence_only
+    evidence_policy: compact
+    description: Same compact prompt with Qwen3-0.6B to Qwen3-4B speculative decoding.

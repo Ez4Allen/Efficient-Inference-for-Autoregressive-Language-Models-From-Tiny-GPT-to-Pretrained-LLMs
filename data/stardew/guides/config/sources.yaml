@@ -1,0 +1,105 @@
+version: 1
+wiki:
+  name: Official Stardew Valley Wiki
+  api_url: https://stardewvalleywiki.com/mediawiki/api.php
+  article_base_url: https://stardewvalleywiki.com/
+  language: en
+  license:
+    name: CC BY-NC-SA 3.0
+    url: https://creativecommons.org/licenses/by-nc-sa/3.0/
+    attribution_url: https://stardewvalleywiki.com/Stardew_Valley_Wiki:Copyrights
+  request:
+    user_agent: GameGuideLMResearch/1.0 (+https://github.com/Ez4Allen/Efficient-Inference-for-Autoregressive-Language-Models-From-Tiny-GPT-to-Pretrained-LLMs)
+    timeout_seconds: 30
+    request_delay_seconds: 0.75
+    max_retries: 4
+    checkpoint_every: 5
+
+discovery:
+  guide_categories: []
+  quality_categories: {}
+  include_title_prefixes: []
+  exclude_title_prefixes:
+    - "User:"
+    - "Talk:"
+    - "Template:"
+  exclude_titles: []
+  priority_pages:
+    - Getting Started
+    - Stardew Valley
+    - Seasons
+    - Crops
+    - Fishing
+    - Fish
+    - Bundles
+    - Community Center
+    - Friendship
+    - Villagers
+    - The Mines
+    - Skills
+  explicit_pages:
+    - Getting Started
+    - Stardew Valley
+    - Day Cycle
+    - Energy
+    - Seasons
+    - Weather
+    - Skills
+    - Farming
+    - Crops
+    - Fishing
+    - Fishing Strategy
+    - Fish
+    - The Mines
+    - Combat
+    - Foraging
+    - Bundles
+    - Remixed Bundles
+    - Community Center
+    - Joja Community Development Form
+    - Friendship
+    - Villagers
+    - Marriage
+    - Cooking
+    - Crafting
+    - Quests
+    - Special Orders
+    - Festivals
+    - Farm Maps
+    - Greenhouse
+    - Museum
+    - Animals
+    - Artisan Goods
+    - Skull Cavern
+    - Ginger Island
+  reference_pages:
+    - Crops
+    - Fish
+    - Villagers
+    - Cooking
+    - Crafting
+    - Bundles
+    - Artisan Goods
+
+cleaning:
+  excluded_sections:
+    - References
+    - Notes
+    - History
+    - See also
+    - External links
+    - Footnotes
+    - Gallery
+  minimum_document_characters: 200
+  minimum_section_characters: 40
+
+chunking:
+  maximum_characters: 1800
+  overlap_characters: 180
+  minimum_characters: 120
+  table_maximum_characters: 1200
+
+index:
+  default_result_limit: 6
+  candidate_multiplier: 10
+  minimum_score: 0.17

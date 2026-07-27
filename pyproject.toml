@@ -3,13 +3,22 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "efficient-autoregressive-inference"
-version = "0.6.0"
-description = "Grounded Qwen assistant and autoregressive/speculative inference experiments"
+name = "gameguidelm"
+version = "1.0.0"
+description = "A grounded multi-game Qwen language model with evidence-aware LoRA and speculative decoding experiments"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "Ez4Allen" }]
+keywords = [
+  "large-language-models",
+  "retrieval-augmented-generation",
+  "grounded-generation",
+  "qwen",
+  "lora",
+  "speculative-decoding",
+  "game-guides",
+]
 dependencies = [
   "torch>=2.1",
   "transformers>=4.51.0,<5.0",
@@ -25,12 +34,21 @@ dependencies = [
   "beautifulsoup4>=4.12",
 ]
 
+[project.scripts]
+gameguidelm = "src.gameguide.cli:main"
+
 [project.optional-dependencies]
 training = [
   "peft>=0.12",
   "bitsandbytes>=0.46; platform_system == 'Linux'",
 ]
-dev = ["pytest>=8.0"]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.urls]
+Repository = "https://github.com/Ez4Allen/Efficient-Inference-for-Autoregressive-Language-Models-From-Tiny-GPT-to-Pretrained-LLMs"
+Documentation = "https://github.com/Ez4Allen/Efficient-Inference-for-Autoregressive-Language-Models-From-Tiny-GPT-to-Pretrained-LLMs/tree/main/docs"
 
 [tool.setuptools.packages.find]
 include = ["src*"]
@@ -40,6 +58,6 @@ addopts = "-ra"
 pythonpath = ["."]
 testpaths = ["tests"]
 markers = [
-  "integration: builds and validates the Terraria SQLite catalog",
-  "gpu: requires CUDA and local model checkpoints",
+  "integration: builds and validates local SQLite knowledge stores",
+  "gpu: requires CUDA and external model checkpoints",
 ]

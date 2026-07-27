@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "project": "GameGuideLM",
+  "version": "1.0.0",
+  "validated_on": "2026-07-27",
+  "python_test_suite": {
+    "passed": 140
+  },
+  "release_validator": {
+    "command": "python scripts/validate_release.py --skip-pytest",
+    "status": "passed"
+  },
+  "stardew": {
+    "record_count": 31,
+    "integrity_check": "ok",
+    "smoke_query": "Parsnip deadline passed"
+  },
+  "terraria": {
+    "linked_recipe_records": 3409,
+    "linked_drop_records": 3144,
+    "resolved_references": 14353,
+    "smoke_query": "Night's Edge recipe passed"
+  },
+  "claim_boundaries": [
+    "No model weights or trained LoRA adapters are distributed.",
+    "The Stardew snapshot is a compact integration seed, not full-Wiki coverage.",
+    "The speculative decoder is a correctness-first baseline; speedup is an experiment, not a release claim.",
+    "Online Wiki corpora and SQLite databases are generated locally and are not distributed."
+  ]
+}

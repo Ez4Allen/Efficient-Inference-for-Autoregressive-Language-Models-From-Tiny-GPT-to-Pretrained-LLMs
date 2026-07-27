@@ -1,71 +1,110 @@
+# Python caches and environments
 __pycache__/
 *.py[cod]
 *.pyo
 .ipynb_checkpoints/
 .pytest_cache/
-
+.coverage
+htmlcov/
 .venv/
 venv/
 env/
 .env
 
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# Model weights and generated checkpoints
 *.pt
 *.pth
 *.ckpt
 *.bin
 *.safetensors
 *.onnx
+/checkpoints/
+checkpoints/
 
-results/raw/*
-results/summary/*
-results/figures/*
+# Runtime outputs
+results/*
+!results/.gitkeep
 logs/
 *.log
 *.csv
+
+# Generic JSONL policy: ignore by default, then opt in below
 *.jsonl
 
-!results/raw/.gitkeep
-!results/summary/.gitkeep
-!results/figures/.gitkeep
-
-.DS_Store
-.vscode/
-.idea/
-
-results/
-!results/.gitkeep
-/checkpoints
-/checkpoints/
-
-# Track compact Terraria training/evaluation datasets
-!data/terraria/
-!data/terraria/*.jsonl
-
-# Track the shared SFT format example
+# Shared small example
 !data/sft_example.jsonl
 
-# Terraria generated catalog artifacts
-# These files are reproducible from the import, cleaning,
-# linking and database-builder modules.
-data/terraria/catalog/*.sqlite3
-data/terraria/catalog/**/*.jsonl
-
-# Temporary migration and backup artifacts
-data/terraria/catalog_backup_*/
-*.bak
-
-# Keep one cleaned Terraria catalog snapshot in Git
+# Terraria compact/reviewed data that is intentionally tracked
+!data/terraria/
+!data/terraria/*.jsonl
+!data/terraria/catalog/
 !data/terraria/catalog/cleaned/
 !data/terraria/catalog/cleaned/*.jsonl
+!data/terraria/catalog/snapshot_manifest.json
+!data/terraria/catalog/ATTRIBUTION.md
+!data/terraria/catalog/README.md
+!data/terraria/guides/
+!data/terraria/guides/config/
+!data/terraria/guides/config/sources.yaml
+!data/terraria/guides/ATTRIBUTION.md
+!data/terraria/guides/README.md
 
-# Terraria generated guide-corpus artifacts
-# Source manifest, attribution, and README remain tracked.
+# Terraria generated catalog and guide artifacts
+data/terraria/catalog/*.sqlite3
+data/terraria/catalog/linked/*.jsonl
+data/terraria/catalog/raw/
+data/terraria/catalog/normalized/
 data/terraria/guides/raw/
 data/terraria/guides/cleaned/
 data/terraria/guides/chunks/
-data/terraria/guides/reports/*.json
+data/terraria/guides/reports/
 data/terraria/guides/*.sqlite3
 data/terraria/guides/*.zip
 
-# Generated guide diagnostic samples
-data/terraria/guides/reports/.diagnostic_samples/
+# Stardew compact facts, reviewed seeds, manifests, and attribution
+!data/stardew/
+!data/stardew/catalog/
+!data/stardew/catalog/cleaned/
+!data/stardew/catalog/cleaned/*.jsonl
+!data/stardew/catalog/snapshot_manifest.json
+!data/stardew/catalog/ATTRIBUTION.md
+!data/stardew/catalog/README.md
+!data/stardew/evaluation/
+!data/stardew/evaluation/*.jsonl
+!data/stardew/guides/
+!data/stardew/guides/config/
+!data/stardew/guides/config/sources.yaml
+!data/stardew/guides/ATTRIBUTION.md
+!data/stardew/guides/README.md
+!data/stardew/guides/seed/
+!data/stardew/guides/seed/*.jsonl
+
+# Stardew generated catalog and guide artifacts
+data/stardew/catalog/*.sqlite3
+data/stardew/catalog/linked/
+data/stardew/catalog/reports/
+data/stardew/guides/raw/
+data/stardew/guides/cleaned/
+data/stardew/guides/chunks/
+data/stardew/guides/reports/
+data/stardew/guides/*.sqlite3
+data/stardew/guides/*.zip
+
+# Generated multi-game training/evaluation outputs
+data/gameguide/*.jsonl
+
+# Temporary migrations and backups
+data/terraria/catalog_backup_*/
+data/stardew/catalog_backup_*/
+*.bak
+*.tmp
+
+# Editor and OS files
+.DS_Store
+.vscode/
+.idea/

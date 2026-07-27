@@ -1,9 +1,120 @@
-# Efficient Inference for Autoregressive Language Models
+# GameGuideLM
 
-This repository contains two related engineering tracks:
+**A grounded multi-game language model for reliable game-guide question answering, evidence-aware LoRA training, and draft/target model analysis.**
 
-1. **Autoregressive inference experiments** — tiny GPT training, prefill/decode measurement, scheduling simulation, and speculative decoding.
-2. **Terraria grounded knowledge** — a reproducible structured catalog for Items, NPCs, Recipes, and Drops plus a locally indexed Official Wiki guide corpus for progression and mechanics questions.
+GameGuideLM treats mutable game knowledge as evidence rather than asking a language model to memorize an entire Wiki. A game plug-in retrieves structured facts and guide excerpts, the shared Qwen model turns that evidence into a natural answer, and a conservative validator rejects unsupported generations. The same grounded prompts are also used to study the behavior of a Qwen3-0.6B draft model against a Qwen3-4B target model.
+
+The final course-project emphasis is **LLM modeling and grounded generation**:
+
+1. evidence-conditioned multi-game prompting;
+2. Qwen3 target/draft inference using one shared model loader;
+3. optional multi-game LoRA for citation-following and answer style;
+4. optional target-teacher LoRA for improving draft/target token alignment;
+5. token-level model-pair analysis and speculative-decoding experiments.
+
+The databases are not the final model. They are the verifiable memory and evaluation workload used by the model.
+
+---
+
+## Supported games
+
+### Terraria
+
+Terraria is the full reference implementation:
+
+- 6,283 cleaned Item records;
+- 770 NPC records;
+- 3,409 Recipe records with 4,221 variants;
+- 3,144 Drop records;
+- entity linking, provenance, integrity auditing, and SQLite FTS;
+- an Official Wiki guide corpus for progression and mechanics questions;
+- bilingual deterministic routing and safe refusal behavior.
+
+### Stardew Valley
+
+Stardew Valley is the second game plug-in and proves that the model layer is not Terraria-specific:
+
+- a compact tracked starter snapshot of 31 high-confidence facts;
+- crops with season and growth-deadline calculation;
+- fish with season/weather/time/location availability windows;
+- villagers and loved gifts;
+- crafting recipes;
+- Standard Community Center bundles;
+- a separate MediaWiki guide pipeline and Stardew-specific query expansion;
+- reviewed bilingual validation/evaluation seed files.
+
+The compact Stardew snapshot is intentionally replaceable. The teammate-maintained full Stardew catalog can extend the same `StardewQueryStore` and `StardewFactService` contract without changing Qwen, LoRA training, or speculative decoding.
+
+---
+
+## Core model pipeline
+
+```text
+User question + selected game + optional player state
+                         │
+                         ▼
+               Game-specific plug-in
+         ┌───────────────┴────────────────┐
+         │                                │
+Structured FactService             Guide FTS retriever
+(items, crops, fish,              (progression, strategy,
+recipes, gifts, drops)             mechanics, walkthroughs)
+         │                                │
+         └───────────────┬────────────────┘
+                         ▼
+              Standard evidence bundle
+        (facts, conditions, warnings, provenance)
+                         ▼
+        Prompt-budgeted evidence selection
+       (stable source IDs, bounded context)
+                         ▼
+              Evidence-conditioned prompt
+                         ▼
+        Qwen3-4B target / Qwen3-0.6B draft
+                         ▼
+          Citation and unsupported-claim validator
+                         ▼
+      Valid answer / constrained repair / safe fallback
+```
+
+All games share the same model runtime. Game plug-ins own only knowledge, conditions, retrieval, and deterministic evidence rendering.
+
+### Prompt budgeting and repair
+
+Long Wiki evidence is selected under deterministic source and character budgets before it reaches Qwen. Citation IDs remain stable, guide chunks are trimmed at natural boundaries, and oversized structured objects use the verified deterministic summary rather than malformed truncated JSON. The grounding validator accepts only sources actually included in the prompt.
+
+If the first model answer fails citation, URL, numeric, length, or thinking-trace checks, GameGuideLM performs one constrained rewrite with the same evidence. A second failure returns the deterministic answer. This makes model-generation failures measurable without exposing unsupported output.
+
+---
+
+## Model architecture
+
+### Target model
+
+```text
+Qwen/Qwen3-4B
+```
+
+The target model is responsible for final answer quality. The first baseline runs the unmodified post-trained checkpoint. A multi-game evidence-aware LoRA is optional and should be trained only after the deterministic retrieval/evaluation pipeline is stable.
+
+### Draft model
+
+```text
+Qwen/Qwen3-0.6B
+```
+
+The draft is from the same Qwen3 family and is validated to use an identical tokenizer. It supports:
+
+- independent small-model generation;
+- training-free speculative decoding;
+- optional sequence-level teacher LoRA using answers generated by the fixed 4B target;
+- token-level agreement, entropy, top-k overlap, and JS-divergence analysis.
+
+### Why no MoE was added
+
+A new MoE architecture would require pretraining or substantial supervised routing data and would confound the course project's main comparisons. The final design uses explicit game plug-ins for evidence routing and a shared Qwen model. This is simpler, measurable, and compatible with the existing checkpoints. MoE can remain a future extension rather than an unvalidated project feature.
+
+---
 
 ## Quick start
 
@@ -11,248 +122,385 @@ This repository contains two related engineering tracks:
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest -q
+python -m pytest -q
 ```
 
-QLoRA training requires the additional GPU dependencies:
+Current offline test result:
+
+```text
+140 passed
+```
+
+Run the complete offline release check (compilation, tests, and both
+structured database builds) without downloading model weights or Wiki pages:
+
+```bash
+python scripts/validate_release.py
+```
+
+GPU LoRA experiments require:
 
 ```bash
 pip install -r requirements-training.txt
 ```
 
-## Terraria knowledge database
+---
 
-The tracked `cleaned/*.jsonl` snapshot is sufficient to rebuild all derived data:
+## Build the knowledge backends
 
-```bash
-python scripts/build_terraria_knowledge.py --quiet
-```
-
-This creates:
-
-- `data/terraria/catalog/linked/Recipes.jsonl`
-- `data/terraria/catalog/linked/Drops.jsonl`
-- `data/terraria/catalog/linked/catalog_integrity_report.json`
-- `data/terraria/catalog/terraria_query.sqlite3`
-- `data/terraria/catalog/terraria_build_report.json`
-
-The default build validates the tracked snapshot against
-`data/terraria/catalog/snapshot_manifest.json`. Use
-`--no-strict-snapshot` only when intentionally rebuilding from a newer catalog.
-
-### Query examples
-
-```python
-from src.knowledge import TerrariaFactService
-
-with TerrariaFactService() as service:
-    recipe = service.recipe("Night's Edge")
-    drops = service.drops_for_item("Beam Sword", mode="expert")
-    npc = service.npc("Armored Skeleton", npc_id=77)
-```
-
-
-A command-line interface is also available:
-
-```bash
-python scripts/query_terraria.py recipe "Night's Edge"
-python scripts/query_terraria.py drops_for_item "Beam Sword" --mode expert
-python scripts/query_terraria.py npc "Armored Skeleton" --npc-id 77
-```
-
-`TerrariaQueryStore` exposes lower-level indexed queries; `TerrariaFactService`
-returns compact fact packages with warnings and provenance suitable for an LLM
-or API layer.
-
-## Grounded Terraria assistant
-
-Natural-language routing and deterministic grounded rendering are available on
-top of the existing FactService:
-
-```python
-from src.assistant import TerrariaAssistant
-
-with TerrariaAssistant(auto_build=True) as assistant:
-    response = assistant.answer("How do I craft Night's Edge?")
-    print(response.answer)
-    print(response.evidence)
-```
-
-The first release supports Item, NPC, Recipe, reverse Recipe, Drop-source, and
-source-loot questions in English and Chinese. It returns clarification for
-same-name entities and refuses to invent facts for unknown entities.
-
-```bash
-python scripts/chat_terraria.py "Where can I get Beam Sword?"
-python scripts/chat_terraria.py "装甲骷髅掉什么？" --mode expert
-python scripts/chat_terraria.py "What is Terra Blade?" --json
-```
-
-`response.context.text` remains an evidence-only representation that can be
-inspected independently of model generation. The repository now also includes
-a native paired-Qwen runtime. It reuses the same model loader and custom
-autoregressive/speculative decoders while retaining the deterministic renderer
-as a safety fallback.
-
-### Paired Qwen3 LLM runtime
-
-The default pair is `Qwen/Qwen3-0.6B` as the draft and `Qwen/Qwen3-4B` as the
-target. Normal assistant use loads only the selected role; speculative mode
-loads both and verifies complete tokenizer compatibility first. No fine-tuning
-is required for the first run.
+### Terraria structured database
 
 ```bash
 python scripts/build_terraria_knowledge.py --quiet
-python scripts/build_terraria_guides.py --offline
-
-python scripts/chat_terraria_llm.py \
-  "进入困难模式后该做什么？" \
-  --engine target \
-  --debug
-
-python scripts/smoke_qwen_pair.py \
-  --engines draft target speculative
 ```
 
-The current speculative engine is a correctness-first baseline and deliberately
-keeps the existing unoptimized draft-prefix recomputation. This isolates the
-next project step: draft-cache reuse and measured TTFT/TPOT/throughput gains.
-See `docs/qwen_grounded_runtime.md`.
+### Terraria guide corpus
 
-### Progression and mechanics guide corpus
-
-The Assistant can also route progression, strategy, class-setup, arena,
-housing, biome-spread, and other mechanics questions to a local document
-retriever. The corpus is discovered from the Official Terraria Wiki's Guide
-category plus explicitly configured core mechanics pages.
+Online build:
 
 ```bash
 python scripts/build_terraria_guides.py
-python scripts/query_terraria_guides.py   "What should I do after entering Hardmode?"
-python scripts/chat_terraria.py   "进入困难模式后该做什么？"
 ```
 
-The pipeline stores raw API responses, cleaned section-aware documents,
-retrieval chunks, quality reports, and a local SQLite FTS5 database under
-`data/terraria/guides/`. Generated text and SQLite artifacts are ignored by
-Git; the source manifest and attribution file are tracked.
-
-To prepare a lightweight review bundle after a live crawl:
+Offline rebuild after a raw snapshot exists:
 
 ```bash
-python scripts/package_terraria_guide_diagnostics.py
+python scripts/build_terraria_guides.py --offline
 ```
 
-Upload the resulting `terraria_guide_diagnostics.zip` for cleaning review. It
-contains reports and bounded samples, not the full raw corpus.
-
-See `docs/terraria_guides.md` for source, license, quality, and update details.
-
-## Inference experiments
-
-The core decoding implementations are in:
-
-- `src/inference/autoregressive.py`
-- `src/inference/speculative.py`
-- `src/evaluation/`
-- `src/optimization/`
-
-A local-checkpoint speculative decoding smoke run is available as:
+### Stardew structured database
 
 ```bash
-python scripts/smoke_speculative.py
+python scripts/build_stardew_knowledge.py --quiet
 ```
 
-It expects local GPT-2 and GPT-2 Medium checkpoints under `checkpoints/`.
-Unit tests for the decoding algorithms use deterministic toy models and do not
-require Hugging Face downloads.
+### Stardew guide corpus
 
-
-## Benchmark workflow
-
-Run one exact token-shape case:
+Small online smoke build:
 
 ```bash
-python scripts/run_single_benchmark.py \
-  --model gpt2 \
-  --prompt-length 128 \
-  --output-length 32 \
-  --prompt-type technical \
-  --runs 5
+python scripts/build_stardew_guides.py --max-pages 3
 ```
 
-Run a resumable YAML sweep and plot the results:
+Full configured build:
 
 ```bash
-python scripts/run_benchmark.py --config configs/gpt2.yaml --resume
-python scripts/plot_results.py \
-  --input results/raw/gpt2_benchmark.jsonl \
-  --output-dir results/figures/gpt2
+python scripts/build_stardew_guides.py
 ```
 
-The benchmark records exact model token counts, TTFT, mean TPOT, total latency,
-throughput, forward calls, and peak CUDA memory.
-
-## TinyGPT example
+Offline rebuild:
 
 ```bash
-python scripts/train_tiny_lm.py --config configs/tiny_gpt.yaml
-python scripts/generate_tiny_lm.py \
-  --checkpoint results/tiny_gpt_shakespeare/model.pt \
-  --tokenizer results/tiny_gpt_shakespeare/tokenizer.json \
-  --prompt "First Citizen:" \
-  --max-new-tokens 200 \
-  --top-k 20
+python scripts/build_stardew_guides.py --offline
 ```
 
-## Serving simulation
+Generated raw Wiki pages, chunks, reports, and SQLite databases are excluded from Git. Source manifests, compact snapshots, evaluation data, and attribution are tracked.
+
+---
+
+## Use the multi-game model
+
+### Deterministic evidence answer
 
 ```bash
-python scripts/run_simulation.py --config configs/simulation.yaml
-python scripts/plot_results.py \
-  --input results/simulation/fcfs.json \
-  --output-dir results/figures/simulation
+python scripts/chat_gameguide.py \
+  --game terraria \
+  "How do I craft Night's Edge?"
+
+python scripts/chat_gameguide.py \
+  --game stardew \
+  "阿比盖尔喜欢什么礼物？"
+
+python scripts/chat_gameguide.py \
+  --game stardew \
+  --season spring \
+  --day 24 \
+  "Can I still plant Parsnip in time?"
 ```
 
-## Terraria QLoRA smoke training
-
-Set local model and output paths, then run the training entry point:
+### Qwen3-4B grounded generation
 
 ```bash
-export TERRARIA_MODEL_PATH=/path/to/model
-export TERRARIA_OUTPUT_DIR=/path/to/output
-python -m src.training.train_sft --config configs/terraria_qlora_smoke.yaml
+python scripts/chat_gameguide.py \
+  --game terraria \
+  --llm \
+  --engine target \
+  "进入困难模式后该做什么？"
+
+python scripts/chat_gameguide.py \
+  --game stardew \
+  --llm \
+  --engine target \
+  "What gifts does Abigail love?"
 ```
 
-Relative dataset paths are resolved from the repository root. Set
-`LLM_PROJECT_ROOT` to override automatic root discovery when embedding the
-project elsewhere.
+### Ungrounded model ablation
+
+Use the same Qwen checkpoint without retrieved evidence only as a controlled
+hallucination baseline:
+
+```bash
+python scripts/chat_gameguide.py \
+  --game terraria \
+  --ungrounded \
+  --engine target \
+  "How do I craft a Void Slime King?"
+```
+
+This mode is not the deployed assistant and intentionally bypasses grounding
+validation so its errors can be measured.
+
+### Draft and speculative modes
+
+```bash
+python scripts/chat_gameguide.py \
+  --game terraria \
+  --llm \
+  --engine draft \
+  "进入困难模式后该做什么？"
+
+python scripts/chat_gameguide.py \
+  --game terraria \
+  --llm \
+  --engine speculative \
+  "进入困难模式后该做什么？"
+```
+
+The speculative implementation is a correctness-first baseline. It preserves target greedy output but is not presented as an optimized speed result until cache reuse and repeated warm benchmark runs are completed.
+
+---
+
+## Evidence-aware LoRA
+
+The existing `src/training/train_sft.py` remains the only QLoRA training implementation.
+
+### 1. Build multi-game grounded SFT examples
+
+```bash
+python scripts/build_grounded_sft.py \
+  --input \
+    data/terraria/terraria_train_v1.jsonl \
+    data/stardew/evaluation/stardew_validation_v1.jsonl \
+  --default-game terraria \
+  --output data/gameguide/grounded_train.jsonl
+```
+
+For mixed input files, add a `game` field to every annotation rather than relying on `--default-game`.
+
+### 2. Train the 4B evidence-following adapter
+
+```bash
+python -m src.training.train_sft \
+  --config configs/gameguidelm_qwen3_4b_lora.yaml
+```
+
+This experiment measures whether LoRA improves citation adherence, refusal behavior, and answer organization. It is not used to memorize Wiki facts.
+
+### 3. Optional draft teacher adaptation
+
+Generate validated target answers:
+
+```bash
+python scripts/generate_teacher_answers.py \
+  --input data/stardew/evaluation/stardew_validation_v1.jsonl \
+  --output data/gameguide/target_teacher_train.jsonl
+```
+
+Train the 0.6B draft:
+
+```bash
+python -m src.training.train_sft \
+  --config configs/gameguidelm_qwen3_0_6b_teacher_lora.yaml
+```
+
+This is sequence-level draft alignment. A future logits-distillation experiment would require a separate loss implementation and is not falsely represented as part of the current SFT trainer.
+
+---
+
+## Model-pair analysis
+
+Analyze Qwen3-0.6B and Qwen3-4B on the exact same grounded completion:
+
+```bash
+python scripts/analyze_qwen_pair.py \
+  --game terraria \
+  "进入困难模式后该做什么？"
+```
+
+Reported model metrics include:
+
+- top-1 next-token agreement;
+- mean top-k overlap;
+- draft and target entropy;
+- Jensen-Shannon divergence;
+- target-token log probability under each model.
+
+These metrics explain speculative acceptance behavior at the model-distribution level, rather than treating the models as black-box APIs. The analyzer prefills the long prompt with KV cache and materializes logits only for completion positions, avoiding multi-gigabyte full-prompt logit tensors for Qwen's large vocabulary.
+
+### Warm target/draft/speculative study
+
+Use one process, load the pair once, warm every engine, and repeat each case:
+
+```bash
+python scripts/benchmark_gameguidelm.py \
+  --input \
+    data/terraria/terraria_eval.jsonl \
+    data/stardew/evaluation/stardew_eval_v1.jsonl \
+  --output results/model_study/runs.jsonl \
+  --summary results/model_study/summary.json \
+  --engines target draft speculative \
+  --warmup-runs 1 \
+  --runs 5 \
+  --max-new-tokens 128
+```
+
+The study records output hashes, grounding validation, TTFT, TPOT, latency, tokens/s, forward calls, acceptance, exact speculative/target text match, environment metadata, and the evidence-budget configuration. Checkpoint download and load time are excluded from warm generation metrics.
+
+---
+
+## Evaluation
+
+Build the relevant guide corpora before evaluating guide/progression examples.
+Without a local guide database, the assistant correctly returns `not_found` for
+those examples and the aggregate score will be lower by design.
+
+Deterministic multi-game evaluation:
+
+```bash
+python scripts/evaluate_gameguidelm.py \
+  --input \
+    data/terraria/terraria_eval.jsonl \
+    data/stardew/evaluation/stardew_eval_v1.jsonl \
+  --output results/gameguidelm/deterministic.jsonl \
+  --summary results/gameguidelm/deterministic_summary.json
+```
+
+Qwen target evaluation:
+
+```bash
+python scripts/evaluate_gameguidelm.py \
+  --llm \
+  --engine target \
+  --input data/stardew/evaluation/stardew_eval_v1.jsonl \
+  --output results/gameguidelm/qwen_target.jsonl \
+  --summary results/gameguidelm/qwen_target_summary.json
+```
+
+Ungrounded target ablation:
+
+```bash
+python scripts/evaluate_gameguidelm.py \
+  --ungrounded \
+  --engine target \
+  --input data/stardew/evaluation/stardew_eval_v1.jsonl \
+  --output results/gameguidelm/qwen_ungrounded.jsonl \
+  --summary results/gameguidelm/qwen_ungrounded_summary.json
+```
+
+
+The evaluator records:
+
+- routing and expected-status accuracy;
+- required-fact coverage;
+- forbidden-error rate;
+- citation presence;
+- retrieved evidence count;
+- runtime debug metrics when an LLM engine is enabled.
+
+Automated lexical coverage is a regression signal, not a claim of human-level factual correctness. Final model comparisons should include manual review of refusal, citation, and false-premise cases.
+
+---
+
+## Recommended final experiments
+
+### Experiment A — Grounding ablation
+
+```text
+Qwen3-4B without evidence
+vs
+Qwen3-4B with GameGuideLM evidence
+```
+
+Measure factual coverage, false-premise hallucination, citation validity, and human preference.
+
+### Experiment B — Target LoRA
+
+```text
+Base Qwen3-4B grounded
+vs
+Evidence-aware Qwen3-4B LoRA grounded
+```
+
+Measure evidence adherence and answer quality while keeping retrieval fixed.
+
+### Experiment C — Draft/target model analysis
+
+Compare token agreement, entropy, top-k overlap, and divergence by:
+
+- game;
+- fact versus guide question;
+- English versus Chinese;
+- prompt length;
+- factual names/numbers versus ordinary connective text.
+
+### Experiment D — Speculative decoding
+
+```text
+Qwen3-4B autoregressive
+vs
+Qwen3-0.6B → Qwen3-4B speculative
+```
+
+Measure exact-token correctness, TTFT, TPOT, end-to-end latency, target calls, draft calls, acceptance rate, accepted tokens per round, and peak memory.
+
+### Experiment E — Optional draft adaptation
+
+```text
+Base Qwen3-0.6B draft
+vs
+Qwen3-0.6B teacher-answer LoRA draft
+```
+
+Use the same fixed Qwen3-4B target. The useful result is not lower training loss; it is improved token agreement, speculative acceptance, and end-to-end latency.
+
+---
 
 ## Repository layout
 
 ```text
-configs/                     Experiment configurations
-scripts/                     Command-line entry points
-src/assistant/               Grounded Terraria routing, retrieval, context, and answers
-src/data/                    Dataset and prompt utilities
-src/evaluation/              Benchmark and evaluation code
-src/inference/               Autoregressive and speculative decoding
-src/knowledge/               Terraria cleaning, linking, query, and fact APIs
-src/retrieval/               Wiki import, cleaning, chunking, FTS, and guide retrieval
-src/models/                  Model loaders and tiny GPT implementation
-src/optimization/            Scheduling and simulation experiments
-src/training/                SFT/QLoRA training
-src/utils/                   Shared utilities and path discovery
-tests/                       Unit and integration tests
-data/terraria/catalog/       Cleaned structured snapshot and build reports
-data/terraria/guides/        Guide source manifest, attribution, and generated corpus
+src/gameguide/               Game-agnostic evidence, prompting, validation, Qwen orchestration
+src/games/terraria/          Adapter for the complete Terraria implementation
+src/games/stardew/           Stardew facts, player-state logic, guides, and deterministic assistant
+src/assistant/               Existing Terraria-specific assistant implementation
+src/knowledge/               Terraria structured catalog and FactService
+src/retrieval/               Shared MediaWiki import, cleaning, chunking, quality, and FTS infrastructure
+src/models/                  One shared Hugging Face/PEFT model loader
+src/inference/               Autoregressive, paired-Qwen, and speculative decoding
+src/training/                Shared SFT/QLoRA trainer and grounded-dataset utilities
+src/evaluation/              Multi-game QA and draft/target model analysis
+scripts/                     Build, chat, train-data, evaluate, and model-analysis entry points
+data/terraria/               Terraria snapshots, manifests, and reviewed QA
+data/stardew/                Stardew compact snapshot, guide manifest, and reviewed QA seed
+data/gameguide/              Generated evidence-conditioned model-training data
 ```
 
-## Data policy
+Older TinyGPT, GPT-2 benchmark, and serving-simulation code remains as supporting coursework and implementation history. It is not part of the final GameGuideLM claim. See `docs/SUPPORTING_EXPERIMENTS.md`.
 
-The cleaned Terraria snapshot is tracked as a reproducible backup. Raw,
-normalized, linked, and SQLite build artifacts are ignored because they can be
-regenerated. The generated Wiki guide corpus is also ignored by default; its
-manifest and attribution are tracked. Source attribution is recorded in
-`data/terraria/catalog/ATTRIBUTION.md` and
-`data/terraria/guides/ATTRIBUTION.md`.
+---
+
+## Final project statement
+
+> **GameGuideLM is a grounded multi-game language model that separates mutable game knowledge from model parameters, trains Qwen to follow retrieved evidence, analyzes a small/large Qwen pair at the token-distribution level, and uses the same realistic Terraria and Stardew workloads for reliable QA and speculative-decoding experiments.**
+---
+
+## Release documentation
+
+- `docs/FINAL_PROJECT.md`: research framing and contribution boundaries;
+- `docs/ARCHITECTURE.md`: exact game plug-in, evidence, Qwen, and validation pipeline;
+- `docs/EXPERIMENTS.md`: model, LoRA, and speculative-decoding experiment matrix;
+- `docs/MODEL_STUDY.md`: prompt-budget, warm benchmark, alignment, and reporting protocol;
+- `docs/MODEL_TRAINING.md`: evidence-aware target and draft training plan;
+- `docs/STARDEW_MODULE.md`: Stardew capability and extension contract;
+- `docs/REPRODUCIBILITY.md`: offline, online-corpus, and GPU experiment protocol;
+- `docs/DELIVERY.md`: exact v1.0.0 scope, validation state, and claim boundaries;
+- `RELEASE_NOTES.md`: v1.0.0 scope and reproducibility statement.
