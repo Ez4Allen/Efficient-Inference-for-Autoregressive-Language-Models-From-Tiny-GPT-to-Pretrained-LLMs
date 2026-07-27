@@ -49,3 +49,15 @@ validation were implemented and compile-tested.
 - Added source URLs, revision IDs, quality flags, license metadata, and
   evidence-preserving extractive rendering.
 - Added a diagnostic bundle command for post-crawl cleaning review.
+## 1.0.0 — GameGuideLM final course-project architecture
+
+- Added a game-agnostic evidence contract and plug-in interface.
+- Reused the complete Terraria knowledge and guide stack as the reference game.
+- Added a Stardew Valley plug-in with temporal, seasonal, weather, location,
+  route, and player-state conditions.
+- Unified deterministic and Qwen-backed answering across games.
+- Added evidence-aware LoRA data generation, optional draft teacher adaptation,
+  multi-game evaluation, and token-level draft/target alignment analysis.
+- Repositioned TinyGPT, GPT-2, serving simulation, and generic benchmark code as
+  supporting course experiments rather than the final project claim.
+- Finalized reproducibility, licensing, metadata, and release validation.

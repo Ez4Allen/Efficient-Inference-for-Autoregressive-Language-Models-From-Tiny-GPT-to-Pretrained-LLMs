@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "game": "stardew_valley",
+  "game_version": "1.6.15",
+  "platform": "all",
+  "record_count": 31,
+  "record_type_counts": {
+    "bundle": 4,
+    "crop": 8,
+    "fish": 10,
+    "recipe": 5,
+    "villager": 4
+  },
+  "source_name": "Official Stardew Valley Wiki",
+  "license_name": "CC BY-NC-SA 3.0",
+  "generated_at": "2026-07-27T00:00:07+00:00",
+  "notes": [
+    "Compact high-confidence starter snapshot. Extend or replace with the teammate-maintained Stardew pipeline before final evaluation."
+  ]
+}

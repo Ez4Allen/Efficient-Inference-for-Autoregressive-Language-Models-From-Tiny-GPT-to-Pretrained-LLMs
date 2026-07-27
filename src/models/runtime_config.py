@@ -1,4 +1,5 @@
-"""Configuration for the paired Qwen assistant runtime."""
+
+"""Configuration for the paired Qwen GameGuideLM runtime."""
 
 from __future__ import annotations
 
@@ -32,6 +33,11 @@ class GroundingConfig:
     require_citations: bool = True
     fallback_on_error: bool = True
     max_answer_chars: int = 6000
+    prompt_mode: str = "evidence_only"
+    evidence_policy: str = "compact"
+    max_evidence_sources: int = 6
+    max_evidence_characters: int = 14_000
+    max_repair_attempts: int = 1
 
 
 @dataclass(frozen=True)
@@ -103,6 +109,28 @@ def load_qwen_pair_config(path: str | Path) -> QwenPairConfig:
     if draft_tokens <= 0:
         raise ValueError("generation.draft_tokens_per_round must be positive.")
 
+    prompt_mode = str(grounding.get("prompt_mode", "evidence_only")).strip().casefold()
+    evidence_policy = str(grounding.get("evidence_policy", "compact")).strip().casefold()
+    max_evidence_sources = int(grounding.get("max_evidence_sources", 6))
+    max_evidence_characters = int(grounding.get("max_evidence_characters", 14_000))
+    max_repair_attempts = int(grounding.get("max_repair_attempts", 1))
+    max_answer_chars = int(grounding.get("max_answer_chars", 6000))
+
+    if prompt_mode not in {"evidence_only", "scaffolded"}:
+        raise ValueError("grounding.prompt_mode must be evidence_only or scaffolded.")
+    if evidence_policy not in {"compact", "full", "structured_only", "guide_only"}:
+        raise ValueError(
+            "grounding.evidence_policy must be compact, full, structured_only, or guide_only."
+        )
+    if max_evidence_sources <= 0:
+        raise ValueError("grounding.max_evidence_sources must be positive.")
+    if max_evidence_characters <= 0:
+        raise ValueError("grounding.max_evidence_characters must be positive.")
+    if max_repair_attempts < 0 or max_repair_attempts > 2:
+        raise ValueError("grounding.max_repair_attempts must be between 0 and 2.")
+    if max_answer_chars <= 0:
+        raise ValueError("grounding.max_answer_chars must be positive.")
+
     return QwenPairConfig(
         draft=_endpoint(models.get("draft"), "draft"),
         target=_endpoint(models.get("target"), "target"),
@@ -117,6 +145,11 @@ def load_qwen_pair_config(path: str | Path) -> QwenPairConfig:
         grounding=GroundingConfig(
             require_citations=bool(grounding.get("require_citations", True)),
             fallback_on_error=bool(grounding.get("fallback_on_error", True)),
-            max_answer_chars=int(grounding.get("max_answer_chars", 6000)),
+            max_answer_chars=max_answer_chars,
+            prompt_mode=prompt_mode,
+            evidence_policy=evidence_policy,
+            max_evidence_sources=max_evidence_sources,
+            max_evidence_characters=max_evidence_characters,
+            max_repair_attempts=max_repair_attempts,
         ),
     )

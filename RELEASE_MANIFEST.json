@@ -1,0 +1,58 @@
+{
+  "project": "GameGuideLM",
+  "version": "1.0.0",
+  "release_date": "2026-07-27",
+  "research_focus": [
+    "grounded multi-game language modeling",
+    "evidence-aware LoRA data construction",
+    "Qwen3 draft/target alignment analysis",
+    "speculative decoding correctness and efficiency experiments",
+    "prompt-budgeted evidence-conditioned generation",
+    "warm repeated target/draft/speculative benchmarking"
+  ],
+  "default_models": {
+    "draft": "Qwen/Qwen3-0.6B",
+    "target": "Qwen/Qwen3-4B"
+  },
+  "offline_validation": {
+    "pytest_tests": 140,
+    "release_validator": "python scripts/validate_release.py",
+    "release_validator_status": "passed",
+    "validated_on": "2026-07-27"
+  },
+  "terraria_snapshot": {
+    "items": 6283,
+    "npcs": 770,
+    "recipes": 3409,
+    "recipe_variants": 4221,
+    "drops": 3144,
+    "resolved_references": 14353
+  },
+  "stardew_snapshot": {
+    "game_version": "1.6.15",
+    "records": 31,
+    "record_type_counts": {
+      "crops": 8,
+      "fish": 10,
+      "villagers": 4,
+      "recipes": 5,
+      "bundles": 4
+    },
+    "scope": "compact source-linked starter snapshot; replaceable by the teammate-maintained full module"
+  },
+  "distributed": {
+    "source_code": true,
+    "compact_structured_snapshots": true,
+    "evaluation_seeds": true,
+    "wiki_corpora": false,
+    "sqlite_databases": false,
+    "model_weights": false,
+    "trained_lora_adapters": false
+  },
+  "claim_boundaries": [
+    "The Stardew snapshot is a compact integration seed, not full-Wiki coverage.",
+    "The current speculative decoder is a correctness-first baseline, not a claimed speedup.",
+    "LoRA configurations and data-generation pipelines are included, but trained adapters are not shipped.",
+    "Online Wiki corpora and Qwen checkpoints must be built or downloaded separately."
+  ]
+}

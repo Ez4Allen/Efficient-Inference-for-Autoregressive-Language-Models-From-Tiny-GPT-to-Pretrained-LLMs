@@ -1,0 +1,31 @@
+# Shared Qwen3 model pair for multi-game grounded generation and speculative decoding.
+models:
+  draft:
+    model_name_or_path: Qwen/Qwen3-0.6B
+    adapter_path: null
+    trust_remote_code: false
+    local_files_only: false
+    load_in_4bit: false
+  target:
+    model_name_or_path: Qwen/Qwen3-4B
+    adapter_path: null
+    trust_remote_code: false
+    local_files_only: false
+    load_in_4bit: false
+runtime:
+  device: auto
+  dtype: auto
+generation:
+  engine: target
+  max_new_tokens: 256
+  draft_tokens_per_round: 4
+  enable_thinking: false
+grounding:
+  require_citations: true
+  fallback_on_error: true
+  max_answer_chars: 7000
+  prompt_mode: evidence_only
+  evidence_policy: compact
+  max_evidence_sources: 6
+  max_evidence_characters: 14000
+  max_repair_attempts: 1
