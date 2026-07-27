@@ -83,6 +83,7 @@ data/terraria/guides/*.zip
 !data/stardew/guides/README.md
 !data/stardew/guides/seed/
 !data/stardew/guides/seed/*.jsonl
+!data/stardew/candidates.jsonl
 
 # Stardew generated catalog and guide artifacts
 data/stardew/catalog/*.sqlite3
