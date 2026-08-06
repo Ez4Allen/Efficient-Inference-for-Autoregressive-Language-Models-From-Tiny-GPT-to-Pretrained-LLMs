@@ -1,0 +1,27 @@
+{
+  "cross_split_near_duplicate_overlap_count": 1,
+  "cross_split_source_overlap_count": 0,
+  "cross_split_template_overlap_count": 620,
+  "eval_frac": 0.1,
+  "excluded_rejected_count": 9,
+  "file_checksums_sha256": {
+    "eval": "60fbd9b2bf837eeb594a7b4ade6e0a18777932088264387ea5dc85e3253672ad",
+    "train": "ba0121cf3a45bd14e1c9fa5a06472f6d7d1a7bfe1a8f6099ca5d68631630c908",
+    "validation": "6af7d01e27054cafc76e4841284cd145d4d41e93370c336a6f0e4bfb6c816b52"
+  },
+  "input_path": "data\\stardew\\sft\\candidates.normalized.jsonl",
+  "input_record_count": 1262,
+  "knowledge_group_counts": {
+    "eval": 31,
+    "total": 309,
+    "train": 247,
+    "validation": 31
+  },
+  "record_counts": {
+    "eval": 116,
+    "train": 1033,
+    "validation": 104
+  },
+  "seed": 42,
+  "val_frac": 0.1
+}

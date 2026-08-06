@@ -1,0 +1,414 @@
+{
+  "generated_from": [
+    {
+      "path": "data\\stardew\\sft\\train.jsonl",
+      "split": "train"
+    },
+    {
+      "path": "data\\stardew\\sft\\validation.jsonl",
+      "split": "validation"
+    },
+    {
+      "path": "data\\stardew\\sft\\eval.jsonl",
+      "split": "eval"
+    }
+  ],
+  "parse_failures": [],
+  "stats": {
+    "counts_by_language": {
+      "en": 1262
+    },
+    "counts_by_review_status": {
+      "<absent>": 1262
+    },
+    "counts_by_split": {
+      "eval": 121,
+      "train": 1015,
+      "validation": 126
+    },
+    "counts_by_verified": {
+      "True": 1262
+    },
+    "cross_split_source_overlap_detail": {},
+    "cross_split_source_overlap_pages": 0,
+    "cross_split_template_overlap_detail": [
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:9",
+        "right": "data\\stardew\\sft\\eval.jsonl:85",
+        "similarity": 0.9067
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:24",
+        "right": "data\\stardew\\sft\\eval.jsonl:4",
+        "similarity": 0.9231
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:29",
+        "right": "data\\stardew\\sft\\eval.jsonl:4",
+        "similarity": 0.9009
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:59",
+        "right": "data\\stardew\\sft\\eval.jsonl:9",
+        "similarity": 0.9306
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:101",
+        "right": "data\\stardew\\sft\\validation.jsonl:85",
+        "similarity": 0.9204
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:102",
+        "right": "data\\stardew\\sft\\validation.jsonl:86",
+        "similarity": 0.9222
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:181",
+        "right": "data\\stardew\\sft\\validation.jsonl:87",
+        "similarity": 0.9057
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:181",
+        "right": "data\\stardew\\sft\\eval.jsonl:59",
+        "similarity": 0.9038
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:233",
+        "right": "data\\stardew\\sft\\validation.jsonl:63",
+        "similarity": 0.9174
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:233",
+        "right": "data\\stardew\\sft\\eval.jsonl:52",
+        "similarity": 0.9204
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:235",
+        "right": "data\\stardew\\sft\\validation.jsonl:64",
+        "similarity": 0.9388
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:277",
+        "right": "data\\stardew\\sft\\eval.jsonl:23",
+        "similarity": 0.9028
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:283",
+        "right": "data\\stardew\\sft\\validation.jsonl:124",
+        "similarity": 0.9247
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:284",
+        "right": "data\\stardew\\sft\\validation.jsonl:125",
+        "similarity": 0.9474
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:285",
+        "right": "data\\stardew\\sft\\validation.jsonl:126",
+        "similarity": 0.9517
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:288",
+        "right": "data\\stardew\\sft\\validation.jsonl:37",
+        "similarity": 0.9346
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:331",
+        "right": "data\\stardew\\sft\\eval.jsonl:103",
+        "similarity": 0.918
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:332",
+        "right": "data\\stardew\\sft\\eval.jsonl:104",
+        "similarity": 0.9438
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:351",
+        "right": "data\\stardew\\sft\\validation.jsonl:85",
+        "similarity": 0.9009
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:523",
+        "right": "data\\stardew\\sft\\validation.jsonl:85",
+        "similarity": 0.9273
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:525",
+        "right": "data\\stardew\\sft\\eval.jsonl:59",
+        "similarity": 0.9
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:526",
+        "right": "data\\stardew\\sft\\eval.jsonl:13",
+        "similarity": 0.9245
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:528",
+        "right": "data\\stardew\\sft\\validation.jsonl:87",
+        "similarity": 0.9434
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:563",
+        "right": "data\\stardew\\sft\\validation.jsonl:80",
+        "similarity": 0.9091
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:576",
+        "right": "data\\stardew\\sft\\validation.jsonl:37",
+        "similarity": 0.9057
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:587",
+        "right": "data\\stardew\\sft\\eval.jsonl:23",
+        "similarity": 0.913
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:614",
+        "right": "data\\stardew\\sft\\eval.jsonl:60",
+        "similarity": 0.908
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:642",
+        "right": "data\\stardew\\sft\\validation.jsonl:79",
+        "similarity": 0.958
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:645",
+        "right": "data\\stardew\\sft\\validation.jsonl:85",
+        "similarity": 0.9123
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:647",
+        "right": "data\\stardew\\sft\\validation.jsonl:80",
+        "similarity": 0.9346
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:700",
+        "right": "data\\stardew\\sft\\eval.jsonl:23",
+        "similarity": 0.9143
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:726",
+        "right": "data\\stardew\\sft\\validation.jsonl:98",
+        "similarity": 0.9116
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:746",
+        "right": "data\\stardew\\sft\\validation.jsonl:103",
+        "similarity": 0.9355
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:746",
+        "right": "data\\stardew\\sft\\eval.jsonl:91",
+        "similarity": 0.9206
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:746",
+        "right": "data\\stardew\\sft\\eval.jsonl:94",
+        "similarity": 0.9688
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:749",
+        "right": "data\\stardew\\sft\\validation.jsonl:103",
+        "similarity": 0.9134
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:749",
+        "right": "data\\stardew\\sft\\eval.jsonl:91",
+        "similarity": 0.9147
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:749",
+        "right": "data\\stardew\\sft\\eval.jsonl:94",
+        "similarity": 0.9618
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:750",
+        "right": "data\\stardew\\sft\\eval.jsonl:95",
+        "similarity": 0.9697
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:757",
+        "right": "data\\stardew\\sft\\eval.jsonl:97",
+        "similarity": 0.9605
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:760",
+        "right": "data\\stardew\\sft\\eval.jsonl:99",
+        "similarity": 0.9322
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:803",
+        "right": "data\\stardew\\sft\\validation.jsonl:63",
+        "similarity": 0.9333
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:811",
+        "right": "data\\stardew\\sft\\validation.jsonl:86",
+        "similarity": 0.9048
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:847",
+        "right": "data\\stardew\\sft\\eval.jsonl:58",
+        "similarity": 0.9541
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:856",
+        "right": "data\\stardew\\sft\\validation.jsonl:85",
+        "similarity": 0.9027
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:868",
+        "right": "data\\stardew\\sft\\validation.jsonl:42",
+        "similarity": 0.916
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:869",
+        "right": "data\\stardew\\sft\\validation.jsonl:43",
+        "similarity": 0.9524
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:871",
+        "right": "data\\stardew\\sft\\eval.jsonl:58",
+        "similarity": 0.9369
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:872",
+        "right": "data\\stardew\\sft\\eval.jsonl:59",
+        "similarity": 0.9346
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:905",
+        "right": "data\\stardew\\sft\\eval.jsonl:92",
+        "similarity": 0.9273
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:922",
+        "right": "data\\stardew\\sft\\eval.jsonl:59",
+        "similarity": 0.9159
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:958",
+        "right": "data\\stardew\\sft\\eval.jsonl:58",
+        "similarity": 0.9009
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:991",
+        "right": "data\\stardew\\sft\\validation.jsonl:63",
+        "similarity": 0.932
+      },
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:992",
+        "right": "data\\stardew\\sft\\validation.jsonl:66",
+        "similarity": 0.9333
+      },
+      {
+        "left": "data\\stardew\\sft\\validation.jsonl:103",
+        "right": "data\\stardew\\sft\\eval.jsonl:91",
+        "similarity": 0.9206
+      },
+      {
+        "left": "data\\stardew\\sft\\validation.jsonl:103",
+        "right": "data\\stardew\\sft\\eval.jsonl:94",
+        "similarity": 0.9062
+      }
+    ],
+    "cross_split_template_overlap_pairs": 56,
+    "duplicate_id_count": 0,
+    "duplicate_ids": {},
+    "exact_duplicate_answer_groups": 3,
+    "exact_duplicate_answer_records": 6,
+    "exact_duplicate_question_groups": 0,
+    "exact_duplicate_question_records": 0,
+    "missing_field_counts": {},
+    "normalized_duplicate_question_groups": 0,
+    "normalized_duplicate_question_records": 0,
+    "parse_failure_count": 0,
+    "top_categories": [
+      [
+        "furniture_acquisition",
+        137
+      ],
+      [
+        "item_acquisition",
+        53
+      ],
+      [
+        "tailoring_dyeing",
+        27
+      ],
+      [
+        "tailoring",
+        27
+      ],
+      [
+        "crop_growth",
+        23
+      ],
+      [
+        "furniture_classification",
+        21
+      ],
+      [
+        "tailoring_and_dyeing",
+        19
+      ],
+      [
+        "fish_pond",
+        19
+      ],
+      [
+        "furniture_category",
+        19
+      ],
+      [
+        "furniture_type",
+        19
+      ],
+      [
+        "crafting_recipe",
+        19
+      ],
+      [
+        "furniture_items",
+        18
+      ],
+      [
+        "weapon_acquisition",
+        17
+      ],
+      [
+        "furniture",
+        16
+      ],
+      [
+        "hat_acquisition",
+        11
+      ],
+      [
+        "tailoring_crafting",
+        11
+      ],
+      [
+        "furniture_placement",
+        11
+      ],
+      [
+        "npc_gifts",
+        10
+      ],
+      [
+        "seed_acquisition",
+        10
+      ],
+      [
+        "weapon_type",
+        10
+      ]
+    ],
+    "total_records": 1262,
+    "unique_categories": 490,
+    "unique_source_pages": 405
+  },
+  "title": "Stardew SFT candidate pool -- baseline audit (pre-cleanup, PR1 Step 1)"
+}

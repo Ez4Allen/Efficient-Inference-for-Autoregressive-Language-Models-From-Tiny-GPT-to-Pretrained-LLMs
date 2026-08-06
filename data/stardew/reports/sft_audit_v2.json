@@ -1,0 +1,139 @@
+{
+  "generated_from": [
+    {
+      "path": "data\\stardew\\sft\\train.jsonl",
+      "split": "train"
+    },
+    {
+      "path": "data\\stardew\\sft\\validation.jsonl",
+      "split": "validation"
+    },
+    {
+      "path": "data\\stardew\\sft\\eval.jsonl",
+      "split": "eval"
+    }
+  ],
+  "parse_failures": [],
+  "stats": {
+    "counts_by_language": {
+      "en": 1253
+    },
+    "counts_by_review_status": {
+      "approved": 1253
+    },
+    "counts_by_split": {
+      "eval": 116,
+      "train": 1033,
+      "validation": 104
+    },
+    "counts_by_verified": {
+      "True": 1253
+    },
+    "cross_split_source_overlap_detail": {},
+    "cross_split_source_overlap_pages": 0,
+    "cross_split_template_overlap_detail": [
+      {
+        "left": "data\\stardew\\sft\\train.jsonl:1007",
+        "right": "data\\stardew\\sft\\eval.jsonl:77",
+        "similarity": 0.9091
+      }
+    ],
+    "cross_split_template_overlap_pairs": 1,
+    "duplicate_id_count": 0,
+    "duplicate_ids": {},
+    "exact_duplicate_answer_groups": 0,
+    "exact_duplicate_answer_records": 0,
+    "exact_duplicate_question_groups": 0,
+    "exact_duplicate_question_records": 0,
+    "missing_field_counts": {},
+    "normalized_duplicate_question_groups": 0,
+    "normalized_duplicate_question_records": 0,
+    "parse_failure_count": 0,
+    "top_categories": [
+      [
+        "furniture_acquisition",
+        137
+      ],
+      [
+        "item_acquisition",
+        53
+      ],
+      [
+        "tailoring_dyeing",
+        27
+      ],
+      [
+        "tailoring",
+        27
+      ],
+      [
+        "crop_growth",
+        23
+      ],
+      [
+        "furniture_classification",
+        21
+      ],
+      [
+        "fish_pond",
+        19
+      ],
+      [
+        "furniture_category",
+        19
+      ],
+      [
+        "furniture_type",
+        19
+      ],
+      [
+        "tailoring_and_dyeing",
+        19
+      ],
+      [
+        "crafting_recipe",
+        19
+      ],
+      [
+        "furniture_items",
+        18
+      ],
+      [
+        "weapon_acquisition",
+        17
+      ],
+      [
+        "furniture",
+        16
+      ],
+      [
+        "hat_acquisition",
+        11
+      ],
+      [
+        "tailoring_crafting",
+        11
+      ],
+      [
+        "furniture_placement",
+        11
+      ],
+      [
+        "npc_gifts",
+        10
+      ],
+      [
+        "seed_acquisition",
+        10
+      ],
+      [
+        "weapon_type",
+        10
+      ]
+    ],
+    "total_records": 1253,
+    "unique_categories": 488,
+    "unique_source_pages": 405
+  },
+  "title": "Stardew SFT candidate pool -- post-cleanup audit (PR1 Step 10)"
+}
