@@ -97,6 +97,39 @@ def build_refusal_sft_record(
     )
 
 
+def extract_annotation_request(
+    record: dict[str, Any],
+    *,
+    default_game: str | None = None,
+    record_label: str = "record",
+) -> tuple[str, str]:
+    """Extract a game and user question from annotation or chat-SFT records."""
+
+    game_value = record.get("game") or record.get("domain") or default_game
+    game = str(game_value or "").strip()
+    if game == "stardew":
+        game = "stardew_valley"
+    if not game:
+        raise ValueError(f"{record_label} has no game/domain value.")
+
+    direct_question = record.get("question")
+    if isinstance(direct_question, str) and direct_question.strip():
+        return game, direct_question.strip()
+
+    messages = record.get("messages")
+    if isinstance(messages, list):
+        for message in reversed(messages):
+            if not isinstance(message, dict) or message.get("role") != "user":
+                continue
+            content = message.get("content")
+            if isinstance(content, str) and content.strip():
+                return game, content.strip()
+
+    raise ValueError(
+        f"{record_label} has neither a non-empty question nor a user message."
+    )
+
+
 def load_annotation_records(paths: Iterable[str | Path]) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     for path in paths:

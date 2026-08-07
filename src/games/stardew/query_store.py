@@ -62,7 +62,11 @@ class StardewQueryStore:
         self._ensure_open()
         normalized = normalize_name(name)
         params: list[Any] = [normalized]
-        type_clause = ""
+        # Acquisition relations deliberately reuse the canonical entity name.
+        # Generic entity lookup excludes those relation records so a crop such
+        # as Parsnip does not become ambiguous merely because its acquisition
+        # sources are also tracked.
+        type_clause = "AND r.record_type <> 'acquisition'"
         if record_type is not None:
             type_clause = "AND r.record_type = ?"
             params.append(str(record_type))
@@ -97,6 +101,23 @@ class StardewQueryStore:
 
     def get_recipe(self, name: str) -> dict[str, Any]:
         return self.get_entity(name, record_type="recipe")
+
+    def get_acquisition(self, name: str) -> dict[str, Any]:
+        return self.get_entity(name, record_type="acquisition")
+
+    def acquisition_sources(self, entity_name: str) -> list[dict[str, Any]]:
+        result = self.get_acquisition(entity_name)
+        if result.get("status") == "not_found":
+            return []
+        records = list(result.get("matches") or [])
+        sources: list[dict[str, Any]] = []
+        for record in records:
+            for source in (record.get("facts") or {}).get("sources") or []:
+                item = dict(source)
+                item["source_catalog_id"] = record.get("source_catalog_id")
+                item["provenance"] = record.get("provenance")
+                sources.append(item)
+        return sources
 
     def get_bundle(
         self,
@@ -136,7 +157,16 @@ class StardewQueryStore:
             SELECT a.alias, a.normalized_alias, r.name, r.record_type, r.source_catalog_id
             FROM aliases AS a
             JOIN records AS r ON r.source_catalog_id = a.source_catalog_id
-            ORDER BY LENGTH(a.alias) DESC, a.alias
+            WHERE r.record_type <> 'acquisition'
+            ORDER BY LENGTH(a.alias) DESC, a.alias,
+                     CASE r.record_type
+                         WHEN 'crop' THEN 1
+                         WHEN 'fish' THEN 2
+                         WHEN 'villager' THEN 3
+                         WHEN 'recipe' THEN 4
+                         WHEN 'bundle' THEN 5
+                         ELSE 9
+                     END
             """
         ).fetchall()
         return [dict(row) for row in rows]

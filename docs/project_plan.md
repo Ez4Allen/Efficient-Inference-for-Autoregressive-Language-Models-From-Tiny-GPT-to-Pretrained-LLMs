@@ -2,99 +2,124 @@
 
 ## Current status
 
-The repository now has two functioning, tested tracks rather than a collection of
-placeholders:
+The repository now has three connected tracks:
 
-1. **Autoregressive inference experiments**
-   - Character-level TinyGPT model, configurable training, checkpointing, and text generation
-   - Cached greedy decoding and deterministic speculative decoding
-   - Exact-token prompt construction
-   - Prefill/decode benchmark measurement with TTFT, TPOT, throughput, and peak CUDA memory
-   - Resumable YAML-driven benchmark sweeps and plotting
-   - Prefill/decode serving simulation with FCFS and shortest-output-first policies
+1. **Grounded multi-game question answering**
+   - Terraria and Stardew Valley plug-ins expose one evidence contract
+   - Structured facts and Wiki guide retrieval remain external to model weights
+   - Deterministic answers, citation validation, repair, and safe fallback
 
-2. **Terraria structured knowledge**
-   - Cleaned Item, NPC, Recipe, and Drop snapshots
-   - Recipe-to-Item and Drop-to-entity linking
-   - Referential-integrity audit
-   - Compressed, indexed SQLite query database with FTS5
-   - `TerrariaQueryStore` and `TerrariaFactService`
-   - Grounded `TerrariaAssistant` with bilingual routing, clarification, context, and CLI
-   - One-command rebuild and integration tests
+2. **Target-model training and evaluation**
+   - Qwen3-4B grounded and ungrounded baselines
+   - Evidence-aware SFT/QLoRA data construction
+   - Multi-game quality evaluation and warm latency benchmarking
 
-## Phase 1 — Tiny GPT baseline
+3. **Draft-model and speculative-decoding research**
+   - Reliable pretrained baseline: Qwen3-0.6B -> Qwen3-4B
+   - Custom from-scratch `TinyQwenDraft` -> Qwen3-4B
+   - Exact tokenizer contracts, target-teacher sequence adaptation, token-level
+     alignment analysis, and persistent-cache greedy speculative decoding
 
-**Status: implemented.**
+The older character-level Shakespeare TinyGPT remains a legacy educational
+exercise. It is no longer the main small-model contribution.
 
-- Train TinyGPT on Tiny Shakespeare from `configs/tiny_gpt.yaml`
-- Save model, tokenizer, and training report
-- Generate text with temperature and top-k sampling
-- Keep the implementation small enough for debugging and educational inspection
+## Phase 1 — Grounded workload
 
-## Phase 2 — Prefill/decode measurement
+**Status: implemented; Stardew data expansion is being developed separately.**
 
-**Status: implemented; real model measurements require local/Hugging Face checkpoints.**
+- Build Terraria and Stardew structured stores
+- Build game-specific Wiki guide indexes
+- Route bilingual fact, conditional, progression, ambiguity, and false-premise
+  questions
+- Render evidence with stable source IDs and provenance
+- Maintain reviewed training, validation, and evaluation splits without leakage
 
-- Generate exact token-length prompts
-- Measure time to first token, mean time per output token, total latency, throughput,
-  forward-call count, and peak accelerator memory
-- Run one case or a resumable Cartesian sweep from YAML
-- Export JSON/JSONL records and plot CSV/PNG summaries
+## Phase 2 — Target baseline and evidence-aware training
 
-## Phase 3 — Inference optimization
+**Status: software implemented; GPU experiments remain.**
 
-**Status: core implementations complete.**
+- Record deterministic and ungrounded baselines
+- Run grounded Qwen3-4B generation
+- Build evidence-conditioned SFT records from reviewed **training** annotations
+- Train optional Qwen3-4B LoRA for citation following, refusal, and concise
+  evidence synthesis
+- Keep formal validation/evaluation files out of training
 
-- Cached greedy decoding
-- Greedy speculative decoding with cache cropping and mismatch correction
-- Phase-separated prefill/decode simulation
-- FCFS and shortest-output-first scheduling policies
+## Phase 3 — Reliable speculative baseline
 
-Next experiments:
+**Status: implemented; warm GPU measurements remain.**
 
-- Continuous batching against a real inference runtime
-- Paged KV-cache accounting
-- Quantized draft/target comparisons
-- CUDA profiler traces and kernel-level analysis
+- Load Qwen3-0.6B and Qwen3-4B with the exact same tokenizer mapping
+- Prefill draft and target once
+- Reuse persistent KV caches across speculative rounds
+- Crop rejected suffixes after mismatch
+- Synchronize target correction and bonus tokens into both caches
+- Preserve exact target-only greedy output
+- Measure acceptance, target-call reduction, TTFT, TPOT, latency, throughput, and
+  peak memory
 
-## Phase 4 — Terraria knowledge and grounded assistant
+No speedup is claimed until repeated warm measurements show that saved target
+work exceeds draft overhead.
 
-**Status: structured QA MVP implemented and integration-tested.**
+## Phase 4 — Custom TinyQwenDraft
 
-- Rebuild linked data and SQLite with `scripts/build_terraria_knowledge.py`
-- Query facts with `scripts/query_terraria.py`
-- Route English and Chinese natural-language questions into deterministic facts
-- Resolve common aliases and preserve same-name ambiguity
-- Render grounded answers with warnings, provenance, and LLM-ready context
-- Use the assistant through `scripts/chat_terraria.py`
+**Status: architecture, loader, trainer, cache, and tests implemented; training
+and benchmark results remain.**
 
-Next work:
+- Use the fixed target tokenizer and record its exact vocabulary/chat-template
+  fingerprints
+- Train a compact Qwen-like decoder from random initialization
+- Use tied embeddings, RMSNorm, grouped-query attention, RoPE, SwiGLU, and KV
+  cache
+- Supervise only target-generated assistant tokens
+- Compare the custom draft with Qwen3-0.6B under identical prompts and target
+- Keep Qwen3-0.6B as the reliable baseline even if the custom draft performs well
 
-- Add a document retriever for progression and mechanics questions that are not represented by structured tables
-- Evaluate route accuracy, retrieval recall, factual exactness, hallucination rate, and latency
-- Train an optional QLoRA answer model to follow retrieved evidence rather than memorize the catalog
-- Compare standard and speculative decoding on the grounded assistant workload
+Required systems:
 
-## Phase 5 — Evaluation and report
+```text
+A. Qwen3-4B target-only greedy
+B. Qwen3-0.6B -> Qwen3-4B speculative
+C. TinyQwenDraft -> Qwen3-4B speculative
+```
 
-**Status: framework ready; experimental runs remain.**
+## Phase 5 — Model-pair analysis
 
-- Run the same prompt/output matrix across GPT-2, OPT, Qwen, and local fine-tuned models
-- Report TTFT, TPOT, throughput, memory, and tail latency
-- Compare baseline and speculative decoding under controlled tokenizer-compatible pairs
-- Record hardware, software versions, seeds, model revisions, and raw result artifacts
+**Status: framework implemented; full experiment runs remain.**
 
-## Milestone: Guide corpus and hybrid retrieval
+- Top-1 token agreement
+- Top-k overlap
+- Draft and target entropy
+- Jensen-Shannon divergence
+- Target-token likelihood under each model
+- Acceptance and accepted tokens per round
+- Slices by game, language, question type, prompt length, and output token type
 
-- [x] Official Wiki source manifest and attribution
-- [x] Guide-category and core-mechanics page discovery
-- [x] Rate-limited incremental MediaWiki import
-- [x] Section-aware HTML cleaning
-- [x] Paragraph-aware retrieval chunking
-- [x] Static quality audit and diagnostic bundle
-- [x] SQLite FTS5 guide index
-- [x] English/Chinese guide query expansion
-- [x] Assistant routing for progression, strategy, and mechanics
-- [ ] First live-crawl diagnostic review
-- [ ] Retrieval benchmark on held-out guide questions
-- [ ] Optional embedding/hybrid reranker comparison
+The primary custom-draft result is not training loss. It is whether its lower
+cost produces a better end-to-end speed/acceptance trade-off than the pretrained
+0.6B draft.
+
+## Phase 6 — Final evaluation and report
+
+**Status: protocol ready; results remain.**
+
+- Grounded versus ungrounded target quality
+- Base target versus evidence-aware target LoRA
+- Pretrained versus custom draft
+- Draft lengths 2/4/6/8
+- Prompt lengths 256/512/1024/2048
+- Exact target/speculative output equality
+- Warm repeated latency with load time excluded
+- Hardware, software, model/tokenizer revisions, seeds, and dataset hashes
+- Manual review of citations, false premises, missing context, and unsupported
+  claims
+
+## Supporting experiments
+
+The following remain useful implementation history but are not central final
+claims:
+
+- character-level Shakespeare TinyGPT;
+- GPT-2/OPT prefill-decode benchmarks;
+- request-scheduling simulation;
+- plotting and generic benchmark utilities.

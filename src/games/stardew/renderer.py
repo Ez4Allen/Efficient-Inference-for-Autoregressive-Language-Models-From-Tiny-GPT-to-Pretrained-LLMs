@@ -26,6 +26,18 @@ _ZH_TERMS = {
     "mountain_lake": "山地湖泊",
     "forest_pond": "森林池塘",
     "ginger_island_freshwater": "姜岛淡水区域",
+    "ginger_island_ocean": "姜岛海域",
+    "ocean": "海洋",
+    "forest_river": "森林河流",
+    "forest_pond": "森林池塘",
+    "desert_pond": "沙漠池塘",
+    "sewers": "下水道",
+    "pirate_cove": "海盗湾",
+    "night_market_submarine": "夜市潜水艇",
+    "mines_20": "矿井20层",
+    "mines_60": "矿井60层",
+    "mines_100": "矿井100层",
+    "volcano_caldera": "火山口",
     "Wood": "木材",
     "Copper Bar": "铜锭",
     "Iron Bar": "铁锭",
@@ -100,6 +112,11 @@ class StardewRenderer:
         if status == "ambiguous":
             names = ", ".join(item.get("name", "") for item in retrieval.get("candidates") or [])
             return (f"这个名称对应多个实体：{names}。请说明你指的是哪一个。" if zh else f"This name matches multiple entities: {names}. Please clarify which one you mean.")
+        if status == "partial":
+            warning = " ".join(retrieval.get("warnings") or [])
+            if zh:
+                return f"当前快照只能提供部分信息，不能把标准收集包当作混合收集包回答。{warning}{cite}"
+            return f"The current snapshot can only provide a partial answer and will not present Standard Bundle data as Remixed Bundle data. {warning}{cite}"
         if status != "found":
             return (
                 f"本地星露谷知识库中没有足够证据支持关于“{entity or retrieval.get('query')}”的答案，所以我不会猜测。"
@@ -109,13 +126,38 @@ class StardewRenderer:
         if intent == "crop_info":
             seasons = ", ".join(_zh(value) if zh else str(value).title() for value in (facts.get("seasons") or []))
             regrow = facts.get("regrow_days")
+            location_seasons = facts.get("location_seasons") or {}
+            exception_parts = []
+            for location, season_values in location_seasons.items():
+                season_values = list(season_values or [])
+                all_seasons = set(season_values) == {"spring", "summer", "fall", "winter"}
+                if zh:
+                    location_label = {
+                        "valley": "星露谷本土",
+                        "ginger_island": "姜岛",
+                        "indoors": "室内",
+                    }.get(str(location), _zh(location))
+                    season_label = "全年" if all_seasons else "/".join(_zh(value) for value in season_values)
+                    exception_parts.append(f"{location_label}：{season_label}")
+                else:
+                    location_label = {
+                        "valley": "the Valley",
+                        "ginger_island": "Ginger Island",
+                        "indoors": "indoors",
+                    }.get(str(location), str(location).replace("_", " ").title())
+                    season_label = "all seasons" if all_seasons else "/".join(str(value).title() for value in season_values)
+                    exception_parts.append(f"{location_label}: {season_label}")
             if zh:
-                answer = f"{entity} 可在 {seasons} 种植，成熟需要 {facts.get('growth_days')} 天"
+                answer = f"{entity} 在星露谷本土可于 {seasons} 种植，成熟需要 {facts.get('growth_days')} 天"
                 answer += f"，首次收获后每 {regrow} 天再生" if regrow else "，收获后不会再生"
+                if exception_parts:
+                    answer += "。地点规则：" + "；".join(exception_parts)
                 answer += f"。普通品质基础售价为 {facts.get('base_sell_price')}g。{cite}"
                 return answer
-            answer = f"{entity} grows in {seasons} and takes {facts.get('growth_days')} days to mature"
+            answer = f"{entity} grows in {seasons} in the Valley and takes {facts.get('growth_days')} days to mature"
             answer += f", then regrows every {regrow} days" if regrow else " and does not regrow"
+            if exception_parts:
+                answer += ". Location rules: " + "; ".join(exception_parts)
             return answer + f". Its base sell price is {facts.get('base_sell_price')}g.{cite}"
 
         if intent == "crop_deadline":
@@ -194,23 +236,67 @@ class StardewRenderer:
                 for item in facts.get("ingredients") or []
             )
             unlock = facts.get("unlock") or {}
+            source = str(unlock.get("source") or facts.get("unlock_source") or "unknown")
+            if unlock.get("skill") is not None and unlock.get("level") is not None:
+                unlock_text_en = f"{str(unlock.get('skill')).title()} level {unlock.get('level')}"
+                unlock_text_zh = f"{_zh(unlock.get('skill'))} {unlock.get('level')} 级"
+            else:
+                unlock_text_en = source
+                unlock_text_zh = source
+            action_en = "Cook" if facts.get("recipe_type") == "cooking" else "Craft"
+            action_zh = "烹饪" if facts.get("recipe_type") == "cooking" else "制作"
             if zh:
-                return f"制作 {entity} 需要：{ingredients}。解锁条件：{_zh(unlock.get('skill'))} {unlock.get('level')} 级。{cite}"
-            return f"Craft {entity} with: {ingredients}. Unlock: {unlock.get('skill')} level {unlock.get('level')}.{cite}"
+                return f"{action_zh} {entity} 需要：{ingredients}。解锁条件：{unlock_text_zh}。{cite}"
+            return f"{action_en} {entity} with: {ingredients}. Unlock: {unlock_text_en}.{cite}"
 
         if intent == "recipes_using_item":
             recipes = ", ".join(facts.get("recipes") or [])
             return (f"{entity} 可用于这些已收录配方：{recipes}。{cite}" if zh else f"Tracked recipes using {entity}: {recipes}.{cite}")
 
         if intent == "bundle":
-            requirements = ", ".join(item["item_name"] for item in facts.get("requirements") or [])
+            requirements = ", ".join(
+                f"{item['item_name']} ×{item.get('quantity', 1)}" +
+                (f" ({item.get('minimum_quality')})" if item.get('minimum_quality') else "")
+                for item in facts.get("requirements") or []
+            )
+            selection = facts.get("selection_rule") or "all"
             if zh:
-                return f"{entity} 位于 {facts.get('room')}，需要：{requirements}。模式：{facts.get('bundle_mode')}。{cite}"
-            return f"{entity} is in the {facts.get('room')} and requires: {requirements}. Mode: {facts.get('bundle_mode')}.{cite}"
+                return f"{entity} 位于 {_zh(facts.get('room'))}，要求：{requirements}。选择规则：{selection}；模式：{facts.get('bundle_mode')}。{cite}"
+            return f"{entity} is in the {facts.get('room')} and requires: {requirements}. Selection rule: {selection}; mode: {facts.get('bundle_mode')}.{cite}"
 
         if intent == "bundles_requiring_item":
             bundles = ", ".join(_zh(value) if zh else str(value) for value in (facts.get("bundles") or []))
             return (f"{entity} 被这些已收录收集包需要：{bundles}。{cite}" if zh else f"Tracked bundles requiring {entity}: {bundles}.{cite}")
+
+        if intent == "acquisition":
+            sources = facts.get("sources") or []
+            lines = []
+            for source in sources[:8]:
+                source_name = source.get("source_name")
+                source_type = source.get("source_type")
+                location = source.get("location")
+                price = source.get("price")
+                currency = source.get("currency") or "g"
+                conditions = "; ".join(str(item) for item in source.get("conditions") or [])
+                if zh:
+                    detail = f"{source_name}（{source_type}）"
+                    if location:
+                        detail += f"，地点：{_zh(location)}"
+                    if price is not None:
+                        detail += f"，价格：{price}{currency}"
+                    if conditions:
+                        detail += f"，条件：{conditions}"
+                else:
+                    detail = f"{source_name} ({source_type})"
+                    if location:
+                        detail += f", location: {str(location).replace('_', ' ')}"
+                    if price is not None:
+                        detail += f", price: {price} {currency}"
+                    if conditions:
+                        detail += f", conditions: {conditions}"
+                lines.append(detail)
+            intro = f"{entity} 的获取方式：" if zh else f"Tracked ways to obtain {entity}:"
+            return intro + "\n- " + "\n- ".join(lines) + cite
 
         if intent == "guide":
             hits = facts.get("hits") or []

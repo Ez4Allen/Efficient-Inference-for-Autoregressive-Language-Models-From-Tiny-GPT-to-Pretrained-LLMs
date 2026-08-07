@@ -214,12 +214,7 @@ def main() -> None:
         else 0.0
     )
 
-    average_accepted_per_round = (
-        speculative.accepted_draft_tokens
-        / speculative.speculative_rounds
-        if speculative.speculative_rounds > 0
-        else 0.0
-    )
+    average_accepted_per_round = speculative.average_accepted_tokens_per_round
 
     print()
     print("=" * 70)
@@ -249,8 +244,16 @@ def main() -> None:
     print(f"Baseline throughput:        {baseline_throughput:.2f} tok/s")
     print(f"Speculative throughput:     {speculative_throughput:.2f} tok/s")
     print(
+        "Draft prefill time:        "
+        f"{speculative.draft_prefill_time_seconds * 1000:.3f} ms"
+    )
+    print(
         "Target prefill time:       "
         f"{speculative.target_prefill_time_seconds * 1000:.3f} ms"
+    )
+    print(
+        "Speculative TTFT:          "
+        f"{speculative.time_to_first_token_seconds * 1000:.3f} ms"
     )
 
     print()

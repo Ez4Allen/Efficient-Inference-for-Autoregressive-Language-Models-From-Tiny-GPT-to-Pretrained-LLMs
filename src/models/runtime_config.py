@@ -14,6 +14,7 @@ import yaml
 @dataclass(frozen=True)
 class ModelEndpointConfig:
     model_name_or_path: str
+    tokenizer_name_or_path: str | None = None
     adapter_path: str | None = None
     trust_remote_code: bool = False
     local_files_only: bool = False
@@ -69,10 +70,13 @@ def _endpoint(payload: dict[str, Any], name: str) -> ModelEndpointConfig:
     model_reference = str(payload.get("model_name_or_path", "")).strip()
     if not model_reference:
         raise ValueError(f"models.{name}.model_name_or_path is required.")
+    tokenizer = payload.get("tokenizer_name_or_path")
+    tokenizer_value = str(tokenizer).strip() if tokenizer else None
     adapter = payload.get("adapter_path")
     adapter_value = str(adapter).strip() if adapter else None
     return ModelEndpointConfig(
         model_name_or_path=model_reference,
+        tokenizer_name_or_path=tokenizer_value,
         adapter_path=adapter_value,
         trust_remote_code=bool(payload.get("trust_remote_code", False)),
         local_files_only=bool(payload.get("local_files_only", False)),

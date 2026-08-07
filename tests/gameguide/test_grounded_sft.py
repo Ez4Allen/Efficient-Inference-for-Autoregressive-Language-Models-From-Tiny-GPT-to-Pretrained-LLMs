@@ -32,3 +32,33 @@ def test_grounded_sft_record_contains_evidence_prompt_and_target():
     assert [message["role"] for message in record["messages"]] == ["system", "user", "assistant"]
     assert "[S1]" in record["messages"][-1]["content"]
     assert record["game"] == "stardew_valley"
+
+
+def test_extract_annotation_request_supports_chat_sft_records() -> None:
+    from src.training.grounded_sft import extract_annotation_request
+
+    game, question = extract_annotation_request(
+        {
+            "domain": "stardew_valley",
+            "messages": [
+                {"role": "system", "content": "Be grounded."},
+                {"role": "user", "content": "Where can I catch Catfish?"},
+                {"role": "assistant", "content": "In rivers."},
+            ],
+        }
+    )
+
+    assert game == "stardew_valley"
+    assert question == "Where can I catch Catfish?"
+
+
+def test_extract_annotation_request_prefers_direct_question_and_default_game() -> None:
+    from src.training.grounded_sft import extract_annotation_request
+
+    game, question = extract_annotation_request(
+        {"question": "  What should I do next?  "},
+        default_game="terraria",
+    )
+
+    assert game == "terraria"
+    assert question == "What should I do next?"

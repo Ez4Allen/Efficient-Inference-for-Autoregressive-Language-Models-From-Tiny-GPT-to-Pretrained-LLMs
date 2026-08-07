@@ -108,6 +108,13 @@ def _semantic_tokens(value: str) -> set[str]:
 
 
 def _contains(text: str, value: Any) -> bool:
+    if isinstance(value, dict):
+        alternatives = value.get("any_of")
+        if isinstance(alternatives, list):
+            return any(_contains(text, candidate) for candidate in alternatives)
+        required = value.get("all_of")
+        if isinstance(required, list):
+            return all(_contains(text, candidate) for candidate in required)
     expected = _fact_text(value)
     normalized_expected = _normalize_match_text(expected)
     normalized_answer = _normalize_match_text(text)

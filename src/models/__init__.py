@@ -7,6 +7,7 @@ from .loader import (
     load_speculative_models,
     validate_tokenizer_compatibility,
 )
+from .tiny_qwen_draft import TinyQwenDraft, TinyQwenDraftCache, TinyQwenDraftConfig
 from .runtime_config import (
     GenerationConfig,
     GroundingConfig,
@@ -22,6 +23,9 @@ __all__ = [
     "ModelEndpointConfig",
     "QwenPairConfig",
     "SpeculativeModelBundle",
+    "TinyQwenDraft",
+    "TinyQwenDraftCache",
+    "TinyQwenDraftConfig",
     "load_causal_lm",
     "load_qwen_pair_config",
     "load_speculative_models",

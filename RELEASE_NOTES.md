@@ -1,63 +1,94 @@
-# GameGuideLM v1.0.0
+# GameGuideLM v1.1.0
 
-GameGuideLM v1.0.0 is the course-project release that consolidates the earlier
-TinyGPT, Terraria knowledge, Wiki retrieval, and Qwen inference work into one
-model-centric research system.
+GameGuideLM v1.1.0 is the code-and-data milestone for the course project. It packages the
+multi-game grounded language-model system, a complete Stardew Valley
+course-release workload, a custom Qwen-token-compatible draft model, an
+interactive demonstration, and reproducible validation. The final written
+report and slide deck are intentionally deferred to a later milestone.
 
 ## Main contribution
 
-A shared Qwen3 language model answers questions for multiple games from
-versioned external evidence. Terraria and Stardew Valley use different game
-schemas but expose one model-facing evidence contract. The same grounded
-prompts are then used for LoRA and draft/target model analysis.
+The system separates game knowledge from model parameters. Terraria and
+Stardew Valley expose different schemas through one model-facing evidence
+contract. Structured facts, guide passages, player state, explicit safety
+statuses, and provenance are assembled into grounded prompts for a Qwen3-4B
+target. Qwen3-0.6B and a custom `TinyQwenDraft` are supported as speculative
+drafts.
 
-## Included
+## Stardew Valley course-release workload
 
-- Multi-game plug-in API and common evidence schema;
-- Complete Terraria structured-fact integration;
-- Terraria Official Wiki guide retrieval;
-- Stardew Valley conditional fact module and guide pipeline;
-- Qwen3-4B target and Qwen3-0.6B draft through one loader/runtime;
-- Deterministic fallback and citation/URL/numeric grounding validation;
-- Evidence-conditioned SFT data construction;
-- Optional 4B evidence-following LoRA and 0.6B teacher-answer LoRA configs;
-- Draft/target top-1 agreement, top-k overlap, entropy, and JS-divergence tools;
-- Multi-game deterministic/Qwen evaluation scripts;
-- Prompt-budgeted evidence selection and constrained generation repair;
-- Warm repeated target/draft/speculative benchmark with output hashes and exact-match checks;
-- Deterministic prompt-budgeted evidence selection with stable citation IDs;
-- One constrained repair pass before deterministic fallback;
-- Cache-aware completion-logit analysis for long grounded prompts;
-- Warm repeated target/draft/speculative benchmark with output hashes and exact-match checks;
-- Autoregressive and correctness-first speculative decoding baselines;
-- Offline unit and integration tests.
+- 505 versioned structured records;
+- 41 crops, 55 fish, 34 villagers, 117 recipes, 30 Standard Bundles, and
+  228 acquisition entities;
+- 317 structured acquisition relations;
+- 25 project-authored offline guide summaries producing 100 searchable chunks;
+- 100 deterministic regression cases with a 50/50 English-Chinese split;
+- controlled `found`, `needs_context`, `partial`, and `not_found` behavior;
+- 159 deterministic grounded training records and 17 validation records;
+- 1,262 legacy AI-assisted SFT candidates cleaned, leakage-audited, and reset to
+  `verified=false` / `review_status=pending`;
+- one-command build, validation, evaluation, demo generation, and test run;
+- self-contained interactive HTML showcase.
+
+## Model and inference work
+
+- Qwen3-4B target and Qwen3-0.6B pretrained draft runtime;
+- custom `TinyQwenDraft` built directly in PyTorch;
+- exact target-tokenizer fingerprint contract;
+- tied token embedding and output projection;
+- RMSNorm, RoPE, grouped-query attention, Q/K RMSNorm, SwiGLU, and persistent
+  crop-able KV cache;
+- assistant-only sequence-level target adaptation pipeline;
+- persistent-cache greedy speculative decoder with exact target-only token
+  equality;
+- target/draft agreement, top-k overlap, entropy, JS divergence, acceptance,
+  and latency instrumentation.
+
+## Reliability and reproducibility
+
+- one command: `python scripts/build_stardew_release.py`;
+- 171 offline tests passed;
+- 100/100 deterministic Stardew regression cases passed;
+- release manifests include counts and SHA-256 hashes;
+- formal evaluation is excluded from training data;
+- unsupported entities and false premises are refused rather than guessed;
+- Standard and Remixed Bundle modes are not silently mixed;
+- every release artifact states the remaining human-review and GPU-experiment
+  boundaries.
+
+## Demonstration assets
+
+This code release contains:
+
+- `demo/stardew_showcase.html`, a self-contained interactive showcase;
+- `notebooks/04_stardew_release_demo.ipynb`, a Colab-friendly release demo;
+- one-command build, validation, evaluation, and demo-generation scripts;
+- reproducible source code, curated data snapshots, tests, and manifests.
+
+The final report and PPTX/PDF presentation are not included in this patch and
+will be produced after the remaining GPU experiments and human review.
 
 ## Deliberately not claimed
 
-- The included Stardew structured snapshot is not full-Wiki coverage;
-- sequence-level teacher LoRA is not logits distillation;
-- the current speculative decoder is a correctness baseline, not an optimized
-  speed result;
-- automated lexical evaluation is not a replacement for human factual review;
-- MoE is not included because no valid expert-routing training experiment was
-  available for this project scope.
+- The Stardew snapshot is a defined course-release scope, not a complete import
+  of every Wiki article.
+- The 100 regression records are machine-validated candidates, not an
+  independently approved benchmark.
+- The guide seed contains project-authored summaries with source attribution,
+  not verbatim Wiki snapshots.
+- No Qwen model weights, trained LoRA adapters, or trained TinyQwenDraft
+  checkpoint are distributed.
+- No speculative-decoding speedup is claimed without a real GPU training and
+  warm-benchmark run.
+- Sequence-level target adaptation is not full-logit distillation.
 
-## Verified release state
-
-- Offline test suite: **140 passed**;
-- Terraria structured snapshot rebuild and integrity audit: passed;
-- Stardew structured snapshot rebuild and deterministic crop-deadline smoke query: passed;
-- Multi-game CLI/import smoke checks: passed;
-- Release metadata and claim boundaries: `RELEASE_MANIFEST.json`.
-
-## Reproducible release checks
+## Reproduce
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest -q
-python scripts/build_terraria_knowledge.py --quiet
-python scripts/build_stardew_knowledge.py --quiet
+python scripts/build_stardew_release.py
 ```
 
-Online Wiki corpora and Qwen checkpoints are built/downloaded separately and
-are not distributed in the repository.
+The build regenerates the Stardew release data, cleans the legacy SFT set,
+builds both local databases, runs the regression suite, validates manifests,
+regenerates the demo, and runs all tests.

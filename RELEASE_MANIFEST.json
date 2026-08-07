@@ -1,58 +1,79 @@
 {
   "project": "GameGuideLM",
-  "version": "1.0.0",
-  "release_date": "2026-07-27",
+  "version": "1.1.0",
+  "release_date": "2026-08-07",
+  "release_name": "Stardew Grounded Assistant and TinyQwenDraft Code Release",
   "research_focus": [
     "grounded multi-game language modeling",
-    "evidence-aware LoRA data construction",
-    "Qwen3 draft/target alignment analysis",
-    "speculative decoding correctness and efficiency experiments",
-    "prompt-budgeted evidence-conditioned generation",
-    "warm repeated target/draft/speculative benchmarking"
+    "versioned structured and guide retrieval",
+    "bilingual player-state-aware question answering",
+    "evidence-aware Qwen adaptation",
+    "custom Qwen-compatible draft modeling",
+    "persistent-cache speculative decoding"
   ],
   "default_models": {
-    "draft": "Qwen/Qwen3-0.6B",
-    "target": "Qwen/Qwen3-4B"
+    "draft_baseline": "Qwen/Qwen3-0.6B",
+    "target": "Qwen/Qwen3-4B",
+    "custom_draft": "TinyQwenDraft"
   },
   "offline_validation": {
-    "pytest_tests": 140,
-    "release_validator": "python scripts/validate_release.py",
-    "release_validator_status": "passed",
-    "validated_on": "2026-07-27"
+    "pytest_tests": 171,
+    "pytest_status": "passed",
+    "stardew_release_builder": "python scripts/build_stardew_release.py",
+    "stardew_release_status": "passed",
+    "validated_on": "2026-08-07"
   },
   "terraria_snapshot": {
-    "items": 6283,
-    "npcs": 770,
-    "recipes": 3409,
-    "recipe_variants": 4221,
-    "drops": 3144,
-    "resolved_references": 14353
+    "resolved_references": 14353,
+    "status": "passed"
   },
   "stardew_snapshot": {
     "game_version": "1.6.15",
-    "records": 31,
+    "records": 505,
     "record_type_counts": {
-      "crops": 8,
-      "fish": 10,
-      "villagers": 4,
-      "recipes": 5,
-      "bundles": 4
+      "acquisition": 228,
+      "bundle": 30,
+      "crop": 41,
+      "fish": 55,
+      "recipe": 117,
+      "villager": 34
     },
-    "scope": "compact source-linked starter snapshot; replaceable by the teammate-maintained full module"
+    "acquisition_relations": 317,
+    "source_pages": 263,
+    "guide_pages": 25,
+    "guide_chunks": 100,
+    "regression_cases": 100,
+    "regression_passed": 100,
+    "languages": {
+      "en": 50,
+      "zh": 50
+    },
+    "grounded_training": {
+      "train": 159,
+      "validation": 17
+    },
+    "legacy_sft_candidates": 1262,
+    "scope": "versioned, source-linked course-release snapshot with independent human review pending"
   },
   "distributed": {
     "source_code": true,
-    "compact_structured_snapshots": true,
-    "evaluation_seeds": true,
-    "wiki_corpora": false,
-    "sqlite_databases": false,
+    "structured_snapshots": true,
+    "offline_guide_seed": true,
+    "generated_local_databases_in_delivery_zip": false,
+    "evaluation_candidates": true,
+    "interactive_demo": true,
+    "report_and_slides": false,
     "model_weights": false,
-    "trained_lora_adapters": false
+    "trained_lora_adapters": false,
+    "trained_custom_draft": false,
+    "code_patch": true,
+    "colab_demo_notebook": true
   },
   "claim_boundaries": [
-    "The Stardew snapshot is a compact integration seed, not full-Wiki coverage.",
-    "The current speculative decoder is a correctness-first baseline, not a claimed speedup.",
-    "LoRA configurations and data-generation pipelines are included, but trained adapters are not shipped.",
-    "Online Wiki corpora and Qwen checkpoints must be built or downloaded separately."
+    "The 100 Stardew cases are deterministic engineering regression candidates and still require independent human source review.",
+    "The Stardew snapshot is a defined course-release scope rather than a complete Wiki import.",
+    "The offline guide seed contains project-authored summaries with explicit provenance flags.",
+    "No Qwen or TinyQwenDraft checkpoint was trained during the offline packaging run.",
+    "Speculative speedup is an experiment protocol, not a measured release claim."
   ]
 }

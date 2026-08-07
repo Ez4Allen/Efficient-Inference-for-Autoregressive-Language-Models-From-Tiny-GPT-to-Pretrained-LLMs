@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "game": "stardew_valley",
+  "game_version": "1.6.15",
+  "validation_count": 40,
+  "eval_count": 60,
+  "total_count": 100,
+  "language_distribution": {
+    "en": 50,
+    "zh": 50
+  },
+  "category_distribution": {
+    "crop": 20,
+    "fish": 15,
+    "villager": 15,
+    "recipe": 15,
+    "bundle": 15,
+    "acquisition": 10,
+    "guide": 10
+  },
+  "intent_distribution": {
+    "crop_info": 11,
+    "crop_deadline": 9,
+    "fish_availability": 15,
+    "villager_gifts": 15,
+    "recipe": 15,
+    "bundle": 15,
+    "acquisition": 10,
+    "guide": 10
+  },
+  "status_distribution": {
+    "found": 70,
+    "needs_context": 10,
+    "partial": 10,
+    "not_found": 10
+  },
+  "review_status_distribution": {
+    "machine_validated": 100
+  },
+  "human_review_required": true,
+  "validation_sha256": "bc860b50933b5a202efea551ef405001b8bb66aa0d33df1e096f5285a639da24",
+  "eval_sha256": "aeeff93e0afde54134aa8370190b04983b15e279f7ac051e5e39edd3dffb05fd",
+  "generated_at": "2026-08-05T00:00:00+00:00",
+  "notes": [
+    "All 100 records are machine-validated candidates.",
+    "A second human reviewer must verify source support before changing review_status to approved."
+  ]
+}

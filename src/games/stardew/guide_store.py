@@ -90,8 +90,12 @@ class StardewGuideStore:
                 profile_bonus += 0.22
             elif plan.profile == "fishing" and any(term in section for term in ("fish", "fishing", "location", "season")):
                 profile_bonus += 0.18
+            elif plan.profile == "skull_cavern" and (title.casefold() == "skull cavern" or any(term in section for term in ("skull", "cavern", "descent", "preparation"))):
+                profile_bonus += 0.24
             elif plan.profile == "mining" and any(term in section for term in ("mine", "mining", "floor", "combat")):
                 profile_bonus += 0.18
+            elif plan.profile == "cooking" and (title.casefold() == "cooking" or any(term in section for term in ("recipe", "television", "friendship", "unlock"))):
+                profile_bonus += 0.22
             elif plan.profile == "relationships" and any(term in section for term in ("gift", "friendship", "marriage")):
                 profile_bonus += 0.18
             role_bonus = {"guide": 0.12, "mechanics": 0.08, "reference": 0.02}.get(row["retrieval_role"], 0.04)

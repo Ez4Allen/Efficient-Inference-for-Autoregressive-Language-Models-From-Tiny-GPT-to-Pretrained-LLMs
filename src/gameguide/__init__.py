@@ -1,7 +1,7 @@
 
 """Public multi-game grounded language-model interfaces."""
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 from .assistant import GameGuideAssistant
 from .baselines import UngroundedQwenGenerator, build_ungrounded_messages

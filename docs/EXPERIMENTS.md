@@ -3,28 +3,33 @@
 ## Research questions
 
 1. Does evidence grounding reduce false-premise hallucination and improve
-   required-fact coverage across two games?
+   required-fact coverage across Terraria and Stardew Valley?
 2. Does evidence-aware LoRA improve citation adherence and answer organization
-   beyond the base Qwen3-4B model?
-3. How do Qwen3-0.6B and Qwen3-4B differ token by token on grounded game-guide
-   prompts?
-4. Can the 0.6B model reduce 4B decoding work through speculative decoding
-   while preserving the exact greedy target output?
-5. Does sequence-level draft adaptation improve token agreement and
-   speculative acceptance rate?
+   beyond the base Qwen3-4B target?
+3. How do Qwen3-0.6B and Qwen3-4B differ token by token on grounded prompts?
+4. Can Qwen3-0.6B reduce Qwen3-4B decoding work while preserving exact greedy
+   target output?
+5. Can a custom Qwen-token-compatible model trained from scratch serve as a
+   lower-cost speculative draft?
+6. Does target-teacher sequence adaptation improve token agreement, acceptance,
+   and end-to-end latency for either draft?
 
 ## Systems
 
-| ID | Retrieval | Generator | Decoder |
+| ID | Retrieval | Generator / pair | Decoder |
 |---|---|---|---|
 | D | yes | deterministic renderer | none |
+| U0 | no | base Qwen3-4B | autoregressive |
 | T0 | yes | base Qwen3-4B | autoregressive |
 | T1 | yes | evidence-aware Qwen3-4B LoRA | autoregressive |
-| S0 | yes | base 0.6B → base 4B | speculative |
-| S1 | yes | teacher-LoRA 0.6B → fixed 4B | speculative |
+| d0 | yes | base Qwen3-0.6B | autoregressive |
+| S0 | yes | base Qwen3-0.6B -> fixed Qwen3-4B | speculative |
+| S1 | yes | teacher-LoRA Qwen3-0.6B -> fixed Qwen3-4B | speculative |
+| c0 | yes | trained TinyQwenDraft | autoregressive |
+| S2 | yes | trained TinyQwenDraft -> fixed Qwen3-4B | speculative |
 
-An optional ungrounded Qwen baseline may be included only for hallucination
-ablation; it must not be presented as the deployed assistant.
+U0 is a hallucination ablation, not the deployed assistant. S0 is the reliable
+speculative baseline. S2 is a research comparison and may be slower.
 
 ## Evaluation slices
 
@@ -32,8 +37,10 @@ ablation; it must not be presented as the deployed assistant.
 - Language: English, Chinese;
 - Query: structured fact, conditional fact, guide/progression;
 - Safety: false premise, ambiguity, missing player state;
-- Context: short fact evidence, long guide evidence;
-- Generation length and prompt length buckets.
+- Evidence: structured only, guide only, compact hybrid, full hybrid;
+- Prompt length: 256, 512, 1024, 2048 token buckets;
+- Output limit: 32, 64, 128 tokens;
+- Draft length: 2, 4, 6, 8 tokens.
 
 ## Model-quality metrics
 
@@ -43,6 +50,7 @@ ablation; it must not be presented as the deployed assistant.
 - forbidden-error rate;
 - valid-citation rate;
 - refusal correctness;
+- repair/fallback rate;
 - human factuality and usefulness review.
 
 ## Model-pair metrics
@@ -52,35 +60,62 @@ ablation; it must not be presented as the deployed assistant.
 - draft/target entropy;
 - Jensen-Shannon divergence;
 - target-token log probability under each model;
-- speculative acceptance rate;
+- proposed and accepted token counts;
+- acceptance rate;
 - mean accepted draft tokens per round;
-- exact-token equality with target greedy decoding.
+- exact-token equality with target-only greedy decoding.
 
 ## Runtime metrics
 
-- TTFT;
+- draft prefill time;
+- target prefill time;
+- actual time to first available output token;
 - mean TPOT;
 - end-to-end generation latency;
 - output tokens per second;
 - target and draft forward calls;
+- model and KV-cache memory;
 - peak GPU memory.
 
-Model loading and first-download time must be reported separately from warm
-inference latency. Each performance result should include warm-up, repeated
-runs, hardware, dtype/quantization, prompt tokens, output tokens, and decoder
-configuration.
+Model loading, download, and first-use CUDA initialization must be reported
+separately from warm inference latency. Every performance result should include
+warm-up count, repetitions, GPU, dtype/quantization, prompt tokens, output
+tokens, target checkpoint, tokenizer fingerprint, draft checkpoint, and draft
+length.
 
 ## Required ablations
 
-1. Grounded versus ungrounded target generation;
-2. Base target versus target LoRA;
-3. Target autoregressive versus training-free speculative;
-4. Draft length 1/2/4/6/8;
-5. Base draft versus teacher-adapted draft;
-6. Terraria versus Stardew and fact versus guide prompts.
+1. grounded versus ungrounded target generation;
+2. base target versus evidence-aware target LoRA;
+3. target-only versus Qwen3-0.6B speculative;
+4. target-only versus TinyQwenDraft speculative;
+5. Qwen3-0.6B versus TinyQwenDraft under the same fixed target;
+6. draft lengths 2/4/6/8;
+7. base versus teacher-adapted Qwen3-0.6B;
+8. prompt-length and output-length buckets;
+9. Terraria versus Stardew;
+10. structured-fact versus guide prompts.
+
+## Execution sequence
+
+1. Freeze the fixed target and tokenizer.
+2. Record D, U0, T0, d0, and S0.
+3. Generate target-teacher train and validation data from reviewed non-eval
+   annotations.
+4. Train the optional Qwen3-0.6B adapter.
+5. Train `TinyQwenDraft` from random initialization.
+6. Validate tokenizer contracts and exact greedy output equality.
+7. Run alignment analysis.
+8. Run warm repeated benchmarks for each pair in separate processes.
+9. Run quality evaluation with retrieval and target held fixed.
+10. Report both speedups and slowdowns.
 
 ## Interpretation boundary
 
-A higher acceptance rate does not by itself prove lower latency. Draft cost,
-cache behavior, prompt length, verification cost, and adapter overhead must be
-measured end to end.
+A higher acceptance rate does not prove lower latency. Draft cost, vocabulary
+projection cost, cache behavior, prompt length, target verification cost, and
+adapter overhead must be measured end to end.
+
+A lower training loss does not prove that the custom draft is useful. The final
+question is whether it reduces target work enough to compensate for its own
+runtime and memory cost.

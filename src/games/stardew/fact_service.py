@@ -23,6 +23,7 @@ class StardewFactService:
         "recipes_using_item",
         "bundle",
         "bundles_requiring_item",
+        "acquisition",
         "search",
     }
 
@@ -321,11 +322,27 @@ class StardewFactService:
         *,
         bundle_mode: str = "standard",
     ) -> dict[str, Any]:
-        record, error = self._single(
-            self.store.get_bundle(name, bundle_mode=bundle_mode),
-            intent="bundle",
-            query=name,
-        )
+        lookup = self.store.get_bundle(name, bundle_mode=bundle_mode)
+        if lookup.get("status") == "not_found" and str(bundle_mode).casefold() == "remixed":
+            standard = self.store.get_bundle(name, bundle_mode="standard")
+            if standard.get("status") == "found":
+                record = standard["match"]
+                return self._base(
+                    status="partial",
+                    intent="bundle",
+                    query=name,
+                    entity=record["name"],
+                    facts={
+                        "requested_bundle_mode": "remixed",
+                        "available_bundle_mode": "standard",
+                        "standard_reference": record["facts"],
+                    },
+                    warnings=[
+                        "The curated snapshot has complete Standard Bundle coverage but does not claim complete Remixed Bundle coverage."
+                    ],
+                    provenance=self._provenance(record),
+                )
+        record, error = self._single(lookup, intent="bundle", query=name)
         if error:
             return error
         assert record is not None
@@ -341,6 +358,41 @@ class StardewFactService:
             query=item_name, entity=item_name,
             facts={"item_name": item_name, "bundle_mode": bundle_mode, "bundles": [record["name"] for record in records]},
             warnings=[] if records else ["No tracked bundle requires this item under the selected bundle mode."],
+            provenance=[entry for record in records for entry in self._provenance(record)],
+        )
+
+
+    def acquisition(self, name: str) -> dict[str, Any]:
+        result = self.store.get_acquisition(name)
+        if result.get("status") == "not_found":
+            return self._base(
+                status="not_found",
+                intent="acquisition",
+                query=name,
+                entity=name,
+                facts=None,
+                warnings=["No tracked acquisition source was found in the curated snapshot."],
+            )
+        records = list(result.get("matches") or [])
+        if not records:
+            return self._base(
+                status="not_found", intent="acquisition", query=name,
+                entity=name, facts=None,
+            )
+        sources: list[dict[str, Any]] = []
+        for record in records:
+            sources.extend(list((record.get("facts") or {}).get("sources") or []))
+        canonical = str((records[0].get("facts") or {}).get("entity_name") or records[0]["name"])
+        return self._base(
+            status="found",
+            intent="acquisition",
+            query=name,
+            entity=canonical,
+            facts={
+                "entity_name": canonical,
+                "entity_type": (records[0].get("facts") or {}).get("entity_type"),
+                "sources": sources,
+            },
             provenance=[entry for record in records for entry in self._provenance(record)],
         )
 
@@ -384,4 +436,6 @@ class StardewFactService:
             return self.bundle(entity, bundle_mode=bundle_mode)
         if normalized == "bundles_requiring_item":
             return self.bundles_requiring_item(entity, bundle_mode=bundle_mode)
+        if normalized == "acquisition":
+            return self.acquisition(entity)
         return self.search(entity, limit=limit)

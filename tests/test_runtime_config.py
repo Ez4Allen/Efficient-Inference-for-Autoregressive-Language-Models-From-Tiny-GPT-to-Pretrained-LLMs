@@ -15,6 +15,7 @@ def test_pair_config_loads_and_expands_environment(tmp_path: Path, monkeypatch) 
 models:
   draft:
     model_name_or_path: ${DRAFT_MODEL}
+    tokenizer_name_or_path: Qwen/Qwen3-4B
   target:
     model_name_or_path: Qwen/Qwen3-4B
 runtime:
@@ -31,6 +32,7 @@ generation:
     config = load_qwen_pair_config(path)
 
     assert config.draft.model_name_or_path == "Qwen/Qwen3-0.6B"
+    assert config.draft.tokenizer_name_or_path == "Qwen/Qwen3-4B"
     assert config.target.model_name_or_path == "Qwen/Qwen3-4B"
     assert config.generation.engine == "speculative"
     assert config.generation.draft_tokens_per_round == 3
