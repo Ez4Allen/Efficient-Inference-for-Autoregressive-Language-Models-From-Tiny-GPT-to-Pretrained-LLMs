@@ -35,6 +35,11 @@ def parse_args() -> argparse.Namespace:
         choices=("draft", "target", "speculative"),
         default=("draft", "target"),
     )
+    parser.add_argument(
+        "--verification-mode",
+        choices=("exact", "block"),
+        help="Override the speculative verification mode from the YAML config.",
+    )
     return parser.parse_args()
 
 
@@ -55,6 +60,7 @@ def main() -> None:
                 messages,
                 engine=engine,
                 max_new_tokens=args.max_new_tokens,
+                verification_mode=args.verification_mode,
             )
             print(f"\n=== {engine.upper()} ===")
             print(result.text)

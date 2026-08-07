@@ -8,6 +8,7 @@ execution.
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import platform
 import sys
@@ -20,6 +21,51 @@ def sha256_text(value: str) -> str:
     """Return a stable SHA-256 digest for generated text."""
 
     return hashlib.sha256(str(value).encode("utf-8")).hexdigest()
+
+
+def sha256_token_ids(token_ids: Iterable[int]) -> str:
+    """Return a stable digest for an ordered generated-token sequence."""
+
+    payload = json.dumps(
+        [int(token_id) for token_id in token_ids],
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def first_token_mismatch(
+    reference: Iterable[int],
+    candidate: Iterable[int],
+) -> int | None:
+    """Return the first differing token position, including length mismatch."""
+
+    reference_ids = [int(token_id) for token_id in reference]
+    candidate_ids = [int(token_id) for token_id in candidate]
+    common_length = min(len(reference_ids), len(candidate_ids))
+    for index in range(common_length):
+        if reference_ids[index] != candidate_ids[index]:
+            return index
+    if len(reference_ids) != len(candidate_ids):
+        return common_length
+    return None
+
+
+def token_agreement_rate(
+    reference: Iterable[int],
+    candidate: Iterable[int],
+) -> float:
+    """Return position-wise agreement over the longer token sequence."""
+
+    reference_ids = [int(token_id) for token_id in reference]
+    candidate_ids = [int(token_id) for token_id in candidate]
+    denominator = max(len(reference_ids), len(candidate_ids))
+    if denominator == 0:
+        return 1.0
+    matches = sum(
+        left == right
+        for left, right in zip(reference_ids, candidate_ids)
+    )
+    return matches / denominator
 
 
 def validate_engines(engines: Iterable[str]) -> tuple[str, ...]:
@@ -47,7 +93,11 @@ def validate_engines(engines: Iterable[str]) -> tuple[str, ...]:
             "The target engine is required when benchmarking speculative "
             "decoding so exact output agreement can be measured."
         )
-    return tuple(normalized)
+
+    # Target must run before speculative so every speculative row has a token
+    # reference even when the CLI arguments were supplied in another order.
+    canonical_order = ("target", "draft", "speculative")
+    return tuple(engine for engine in canonical_order if engine in normalized)
 
 
 def _percentile(values: list[float], probability: float) -> float:
@@ -122,7 +172,22 @@ def summarize_benchmark_rows(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
                 mean(float(bool(row["exact_target_match"])) for row in exact_rows),
                 6,
             ) if exact_rows else None,
+            "token_agreement_rate": _metric_summary(values("token_agreement_rate")),
         }
+
+    target_rows = grouped.get("target", [])
+    target_hashes_by_example: dict[str, set[str]] = defaultdict(set)
+    for row in target_rows:
+        token_hash = row.get("token_ids_sha256")
+        if token_hash is not None:
+            target_hashes_by_example[str(row.get("example_id"))].add(
+                str(token_hash)
+            )
+    target_deterministic = (
+        all(len(hashes) == 1 for hashes in target_hashes_by_example.values())
+        if target_hashes_by_example
+        else None
+    )
 
     target_mean = (
         engines.get("target", {})
@@ -145,6 +210,7 @@ def summarize_benchmark_rows(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
         "target_over_speculative_speedup": (
             round(speedup, 6) if speedup is not None else None
         ),
+        "target_token_deterministic": target_deterministic,
     }
 
 

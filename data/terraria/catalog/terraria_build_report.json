@@ -19,11 +19,11 @@
     "query_database_report": "data/terraria/catalog/terraria_query_report.json"
   },
   "timings_seconds": {
-    "link_recipes": 1.1634,
-    "link_drops": 0.874,
-    "integrity_audit": 1.3696,
-    "query_database": 3.8258,
-    "total": 7.2331
+    "link_recipes": 1.2165,
+    "link_drops": 0.9047,
+    "integrity_audit": 1.4274,
+    "query_database": 3.8998,
+    "total": 7.4488
   },
   "summary": {
     "linked_recipe_records": 3409,

@@ -8,7 +8,7 @@ python -m pytest -q
 python scripts/validate_release.py --skip-pytest
 ```
 
-GameGuideLM v1.1.0 has 171 offline tests. They cover the original project,
+GameGuideLM v1.1.0 has 184 offline tests. They cover the original project,
 the completed Stardew release contract, SFT cleanup, bilingual deterministic
 behavior, guide retrieval, the custom draft configuration and model, answer-only
 training, tokenizer compatibility, loader integration, and persistent speculative
@@ -110,7 +110,7 @@ python scripts/smoke_qwen_pair.py \
   --engines draft target speculative
 ```
 
-The speculative text must exactly match target-only greedy text.
+With `generation.verification_mode: exact`, the speculative token IDs must match the deterministic target-only greedy reference. Block-mode equality is measured rather than assumed.
 
 ## Warm benchmarking
 
@@ -124,7 +124,8 @@ python scripts/benchmark_gameguidelm.py \
   --summary results/qwen_pair/summary.json \
   --engines target draft speculative \
   --warmup-runs 1 \
-  --runs 5
+  --runs 5 \
+  --verification-mode exact
 
 python scripts/benchmark_gameguidelm.py \
   --config configs/gameguidelm_tiny_qwen_pair.yaml \
@@ -133,8 +134,16 @@ python scripts/benchmark_gameguidelm.py \
   --summary results/tiny_pair/summary.json \
   --engines target draft speculative \
   --warmup-runs 1 \
-  --runs 5
+  --runs 5 \
+  --verification-mode exact
 ```
+
+Repeat each command with `--verification-mode block` for the wall-clock speed
+study. Exact mode is the correctness gate; block mode must report token-ID match,
+first mismatch position, and agreement rate alongside latency and throughput.
+If block mode diverges, an otherwise identical diagnostic rerun may set the
+target endpoint to `attn_implementation: eager`; do not compare latency across
+attention backends as though they were the same system.
 
 Checkpoint download, loading, and first CUDA initialization must not be mixed
 into steady-state decode latency.
@@ -156,4 +165,4 @@ Always record:
 - decoder and draft length;
 - draft/target prefill, TTFT, TPOT, latency, tokens/s, and peak memory;
 - proposed and accepted tokens, acceptance, and forward calls;
-- exact-token equality with target-only greedy decoding.
+- verification mode and measured token-ID equality with target-only greedy decoding.

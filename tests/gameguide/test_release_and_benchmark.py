@@ -19,6 +19,7 @@ def test_release_version_matches_pyproject() -> None:
 
 def test_model_benchmark_summary_and_engine_contract() -> None:
     assert validate_engines(["target", "draft", "target"]) == ("target", "draft")
+    assert validate_engines(["speculative", "target"]) == ("target", "speculative")
     with pytest.raises(ValueError, match="target engine is required"):
         validate_engines(["speculative"])
 

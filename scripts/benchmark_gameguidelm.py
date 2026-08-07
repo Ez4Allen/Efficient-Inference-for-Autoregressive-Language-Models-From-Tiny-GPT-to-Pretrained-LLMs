@@ -22,8 +22,11 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.evaluation.gameguide_eval import normalize_annotation
 from src.evaluation.model_benchmark import (
     basic_environment_metadata,
+    first_token_mismatch,
     sha256_text,
+    sha256_token_ids,
     summarize_benchmark_rows,
+    token_agreement_rate,
     validate_engines,
 )
 from src.gameguide import EvidenceSelectionConfig, GameGuideAssistant
@@ -60,6 +63,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--max-new-tokens", type=int, default=128)
     parser.add_argument("--draft-tokens-per-round", type=int)
+    parser.add_argument(
+        "--verification-mode",
+        choices=("exact", "block"),
+        help=(
+            "Override generation.verification_mode. Use exact for target-token "
+            "identity checks and block for wall-clock speed experiments."
+        ),
+    )
     parser.add_argument("--limit", type=int)
     parser.add_argument(
         "--default-game",
@@ -162,15 +173,18 @@ def _run_generation(
     warmup: bool,
     max_new_tokens: int,
     draft_tokens_per_round: int | None,
+    verification_mode: str | None,
     require_citations: bool,
     max_answer_chars: int,
     target_text: str | None,
-) -> tuple[dict[str, Any], str]:
+    target_token_ids: tuple[int, ...] | None,
+) -> tuple[dict[str, Any], str, tuple[int, ...]]:
     generated = runtime.generate(
         case["messages"],
         engine=engine,
         max_new_tokens=max_new_tokens,
         draft_tokens_per_round=draft_tokens_per_round,
+        verification_mode=verification_mode,
     )
     validation = validate_gameguide_answer(
         generated.text,
@@ -178,9 +192,31 @@ def _run_generation(
         require_citations=require_citations,
         max_answer_chars=max_answer_chars,
     )
+    compare_with_target = engine == "speculative" and target_token_ids is not None
     exact_target_match = (
+        generated.generated_token_ids == target_token_ids
+        if compare_with_target
+        else None
+    )
+    exact_target_text_match = (
         generated.text == target_text
         if engine == "speculative" and target_text is not None
+        else None
+    )
+    mismatch_index = (
+        first_token_mismatch(
+            target_token_ids or [],
+            generated.generated_token_ids,
+        )
+        if compare_with_target
+        else None
+    )
+    agreement_rate = (
+        token_agreement_rate(
+            target_token_ids or [],
+            generated.generated_token_ids,
+        )
+        if compare_with_target
         else None
     )
     row = {
@@ -193,13 +229,17 @@ def _run_generation(
         "run": run_index,
         "warmup": warmup,
         "output_sha256": sha256_text(generated.text),
+        "token_ids_sha256": sha256_token_ids(generated.generated_token_ids),
         "grounding_valid": validation.valid,
         "validation_issues": validation.issues,
         "exact_target_match": exact_target_match,
+        "exact_target_text_match": exact_target_text_match,
+        "first_target_token_mismatch": mismatch_index,
+        "token_agreement_rate": agreement_rate,
         "evidence_selection": case["evidence_selection"],
         **generated.to_dict(),
     }
-    return row, generated.text
+    return row, generated.text, generated.generated_token_ids
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -233,9 +273,10 @@ def main(argv: list[str] | None = None) -> None:
         # stored for auditability and excluded by summarize_benchmark_rows().
         warm_case = cases[0]
         warm_target_text: str | None = None
+        warm_target_token_ids: tuple[int, ...] | None = None
         for engine in args.engines:
             for warmup_index in range(args.warmup_runs):
-                row, text = _run_generation(
+                row, text, token_ids = _run_generation(
                     runtime,
                     warm_case,
                     engine=engine,
@@ -243,21 +284,25 @@ def main(argv: list[str] | None = None) -> None:
                     warmup=True,
                     max_new_tokens=args.max_new_tokens,
                     draft_tokens_per_round=args.draft_tokens_per_round,
+                    verification_mode=args.verification_mode,
                     require_citations=config.grounding.require_citations,
                     max_answer_chars=config.grounding.max_answer_chars,
                     target_text=warm_target_text,
+                    target_token_ids=warm_target_token_ids,
                 )
                 rows.append(row)
                 if engine == "target":
                     warm_target_text = text
+                    warm_target_token_ids = token_ids
 
         for case in cases:
             target_text: str | None = None
+            target_token_ids: tuple[int, ...] | None = None
             # validate_engines() requires target whenever speculative is present,
             # so the first measured target output is the exact-match reference.
             for engine in args.engines:
                 for run_index in range(args.runs):
-                    row, text = _run_generation(
+                    row, text, token_ids = _run_generation(
                         runtime,
                         case,
                         engine=engine,
@@ -265,13 +310,16 @@ def main(argv: list[str] | None = None) -> None:
                         warmup=False,
                         max_new_tokens=args.max_new_tokens,
                         draft_tokens_per_round=args.draft_tokens_per_round,
+                        verification_mode=args.verification_mode,
                         require_citations=config.grounding.require_citations,
                         max_answer_chars=config.grounding.max_answer_chars,
                         target_text=target_text,
+                        target_token_ids=target_token_ids,
                     )
                     rows.append(row)
-                    if engine == "target" and target_text is None:
+                    if engine == "target" and target_token_ids is None:
                         target_text = text
+                        target_token_ids = token_ids
     finally:
         runtime.close()
 
@@ -288,6 +336,10 @@ def main(argv: list[str] | None = None) -> None:
                 "draft_tokens_per_round": (
                     args.draft_tokens_per_round
                     or config.generation.draft_tokens_per_round
+                ),
+                "verification_mode": (
+                    args.verification_mode
+                    or config.generation.verification_mode
                 ),
                 "prompt_mode": args.prompt_mode,
                 "evidence_policy": args.evidence_policy,

@@ -8,6 +8,7 @@ models:
     trust_remote_code: false
     local_files_only: false
     load_in_4bit: false
+    attn_implementation: sdpa
   target:
     model_name_or_path: Qwen/Qwen3-4B
     tokenizer_name_or_path: Qwen/Qwen3-4B
@@ -15,6 +16,7 @@ models:
     trust_remote_code: false
     local_files_only: false
     load_in_4bit: false
+    attn_implementation: null
 runtime:
   device: auto
   dtype: auto
@@ -22,6 +24,7 @@ generation:
   engine: speculative
   max_new_tokens: 256
   draft_tokens_per_round: 4
+  verification_mode: exact
   enable_thinking: false
 grounding:
   require_citations: true

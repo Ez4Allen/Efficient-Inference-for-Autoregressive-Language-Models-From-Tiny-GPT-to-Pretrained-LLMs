@@ -151,7 +151,7 @@ Primary metrics:
 - top-1 agreement, top-k overlap, entropy, JS divergence, and target-token
   likelihood;
 - proposed/accepted tokens, accepted tokens per round, and forward calls;
-- exact-token equality with target-only greedy decoding.
+- verification mode and measured token-ID equality with target-only greedy decoding.
 
 ## Reliability and claim boundary
 
@@ -176,6 +176,6 @@ until GPU training and warm benchmarking are completed.
 
 ## Stardew course-release state
 
-The tracked Stardew snapshot now contains 505 structured records and 317 acquisition relations. The offline guide seed contains 25 pages and produces 100 chunks. The deterministic regression suite contains 100 examples with a 50/50 English-Chinese split and controlled `found`, `needs_context`, `partial`, and `not_found` behavior. The current deterministic implementation passes all 100 regression cases and the repository passes 171 offline tests.
+The tracked Stardew snapshot now contains 505 structured records and 317 acquisition relations. The offline guide seed contains 25 pages and produces 100 chunks. The deterministic regression suite contains 100 examples with a 50/50 English-Chinese split and controlled `found`, `needs_context`, `partial`, and `not_found` behavior. The current deterministic implementation passes all 100 regression cases and the repository passes 184 offline tests.
 
 These are engineering regression results. The 100 benchmark records remain `machine_validated` with `human_review_required=true`; no reviewer identity or approval has been fabricated. Qwen/QLoRA quality gains and speculative-decoding speedups remain GPU experiments until checkpoints are trained and warm benchmarks are executed.

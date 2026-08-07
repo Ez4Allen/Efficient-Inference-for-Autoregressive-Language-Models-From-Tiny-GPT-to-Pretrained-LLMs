@@ -78,7 +78,8 @@ BPE tokenizer.
 For every verification round it:
 
 1. proposes a token block from the persistent draft cache;
-2. verifies the block with one target call;
+2. verifies it with either the target-consistent `exact` path or the one-call
+   performance-oriented `block` path;
 3. crops both caches to the accepted prefix after a mismatch;
 4. feeds the target correction token to both models; or
 5. consumes the fully accepted proposal and target bonus token in both caches.
@@ -96,7 +97,8 @@ The current implementation is deliberately limited to:
 
 - batch size 1;
 - greedy decoding;
-- exact equality with target-only greedy output.
+- guaranteed target-only equality in `exact` mode;
+- measured, not assumed, equality in `block` mode.
 
 Sampling-based speculative decoding requires acceptance/rejection probabilities
 and residual sampling and is outside this implementation.

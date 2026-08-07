@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import torch
 
-from src.inference.chat_runtime import QwenPairRuntime
+from src.inference.chat_runtime import QwenPairRuntime, _endpoint_kwargs
 from src.models.loader import ModelBundle, SpeculativeModelBundle
 from src.models.runtime_config import (
     GenerationConfig,
@@ -109,3 +109,28 @@ def test_runtime_target_and_speculative_outputs_match() -> None:
     assert target.generated_tokens == 5
     assert speculative.acceptance_rate == 1.0
     assert speculative.draft_forward_calls > 0
+    assert speculative.verification_mode == "exact"
+
+
+def test_runtime_can_override_block_verification() -> None:
+    pair_runtime = runtime()
+    messages = [{"role": "user", "content": "hello"}]
+
+    speculative = pair_runtime.generate(
+        messages,
+        engine="speculative",
+        max_new_tokens=5,
+        draft_tokens_per_round=3,
+        verification_mode="block",
+    )
+
+    assert speculative.verification_mode == "block"
+
+
+def test_endpoint_kwargs_include_attention_implementation() -> None:
+    endpoint = ModelEndpointConfig(
+        "toy",
+        attn_implementation="eager",
+    )
+
+    assert _endpoint_kwargs(endpoint)["attn_implementation"] == "eager"

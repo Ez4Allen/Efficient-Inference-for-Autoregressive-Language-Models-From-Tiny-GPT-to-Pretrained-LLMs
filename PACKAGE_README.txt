@@ -9,7 +9,7 @@ Validated release commands:
   python scripts/validate_release.py --skip-pytest
 
 Verified offline result for this rebased patch:
-  171 tests passed
+  184 tests passed
   Stardew structured catalog: 505 records
   Stardew acquisition relations: 317
   Stardew offline guides: 25 pages / 100 searchable chunks
