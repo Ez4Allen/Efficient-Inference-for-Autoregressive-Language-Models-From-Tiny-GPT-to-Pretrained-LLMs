@@ -38,7 +38,8 @@ def slug(value: str) -> str:
 
 
 def wiki_url(page_title: str) -> str:
-    return f"{WIKI}/{quote(page_title.replace(' ', '_'), safe='()_\'') }"
+    normalized = page_title.replace(" ", "_")
+    return f"[WIKI]/{quote(normalized, safe='()_')}"
 
 
 def provenance(page_title: str, section_title: str) -> dict[str, Any]:
