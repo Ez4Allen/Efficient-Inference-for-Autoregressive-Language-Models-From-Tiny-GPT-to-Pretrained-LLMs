@@ -17,7 +17,7 @@
     "custom_draft": "TinyQwenDraft"
   },
   "offline_validation": {
-    "pytest_tests": 171,
+    "pytest_tests": 184,
     "pytest_status": "passed",
     "stardew_release_builder": "python scripts/build_stardew_release.py",
     "stardew_release_status": "passed",

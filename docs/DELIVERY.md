@@ -4,7 +4,7 @@
 
 ```text
 Offline engineering build:                 passed
-Repository tests:                          171 passed
+Repository tests:                          184 passed
 Stardew deterministic regression:          100 / 100 passed
 Stardew structured records:                505
 Stardew acquisition relations:             317
@@ -93,7 +93,7 @@ The following claims are supported by reproducible offline artifacts:
 - SQLite integrity;
 - deterministic routing/retrieval/rendering behavior;
 - 100-case Stardew regression result;
-- 171-test repository result;
+- 184-test repository result;
 - tokenizer-contract, cache, trainer, and speculative-decoder software tests.
 
 The following are intentionally not claimed without GPU execution:

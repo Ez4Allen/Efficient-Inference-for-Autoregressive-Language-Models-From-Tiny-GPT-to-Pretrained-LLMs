@@ -91,14 +91,14 @@ The previous implementation repeatedly reconstructed draft state across speculat
 6. crops both caches after a mismatch;
 7. synchronizes the target correction token into both caches;
 8. synchronizes the target bonus token after a fully accepted block;
-9. preserves token-for-token equality with target-only greedy decoding.
+9. provides an `exact` verification path for deterministic target-token equality and a separate `block` path for speed experiments.
 
 The current supported scope is intentionally narrow:
 
 ```text
 batch size: 1
 decoding: greedy only
-correctness target: exact target-only output equality
+correctness target: exact target-only output equality in `exact` mode; measured equality in `block` mode
 ```
 
 Sampling-based speculative decoding is not implemented yet.
@@ -221,7 +221,7 @@ pytest -q
 Result:
 
 ```text
-171 passed
+184 passed
 ```
 
 The release integrity validator also passed:
@@ -243,7 +243,7 @@ Terraria resolved references: 14,353
 The custom draft implementation is now integrated with the final Stardew course-release snapshot. The complete merged release was tested again:
 
 ```text
-171 passed
+184 passed
 Stardew release build: passed
 release validation: engineering_passed_human_review_pending
 ```
@@ -289,7 +289,7 @@ python scripts/build_stardew_release.py --skip-tests
 Expected repository test result:
 
 ```text
-171 passed
+184 passed
 ```
 
 After inspection, commit and push the feature branch. Open the Pull Request

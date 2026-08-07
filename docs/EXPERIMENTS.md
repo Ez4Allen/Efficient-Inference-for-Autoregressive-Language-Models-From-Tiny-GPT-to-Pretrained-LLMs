@@ -63,7 +63,7 @@ speculative baseline. S2 is a research comparison and may be slower.
 - proposed and accepted token counts;
 - acceptance rate;
 - mean accepted draft tokens per round;
-- exact-token equality with target-only greedy decoding.
+- verification mode and measured token-ID equality with target-only greedy decoding.
 
 ## Runtime metrics
 

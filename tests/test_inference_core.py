@@ -67,7 +67,10 @@ def test_greedy_decode_uses_cache_and_generates_expected_tokens() -> None:
     assert len(result.decode_times_seconds) == 3
 
 
-def test_speculative_decode_matches_baseline_with_perfect_draft() -> None:
+@pytest.mark.parametrize("verification_mode", ["exact", "block"])
+def test_speculative_decode_matches_baseline_with_perfect_draft(
+    verification_mode: str,
+) -> None:
     target = ToyCausalLM(offset=1)
     draft = ToyCausalLM(offset=1)
     prompt = torch.tensor([[3, 4]], dtype=torch.long)
@@ -79,8 +82,10 @@ def test_speculative_decode_matches_baseline_with_perfect_draft() -> None:
         prompt,
         max_new_tokens=9,
         draft_tokens_per_round=4,
+        verification_mode=verification_mode,
     )
 
+    assert speculative.verification_mode == verification_mode
     assert torch.equal(
         baseline.generated_token_ids,
         speculative.generated_token_ids,
@@ -89,7 +94,10 @@ def test_speculative_decode_matches_baseline_with_perfect_draft() -> None:
     assert speculative.accepted_draft_tokens == speculative.proposed_tokens
 
 
-def test_speculative_decode_corrects_bad_draft() -> None:
+@pytest.mark.parametrize("verification_mode", ["exact", "block"])
+def test_speculative_decode_corrects_bad_draft(
+    verification_mode: str,
+) -> None:
     target = ToyCausalLM(offset=1)
     draft = ToyCausalLM(offset=2)
     prompt = torch.tensor([[1, 7]], dtype=torch.long)
@@ -101,8 +109,10 @@ def test_speculative_decode_corrects_bad_draft() -> None:
         prompt,
         max_new_tokens=7,
         draft_tokens_per_round=3,
+        verification_mode=verification_mode,
     )
 
+    assert speculative.verification_mode == verification_mode
     assert torch.equal(
         baseline.generated_token_ids,
         speculative.generated_token_ids,
@@ -203,7 +213,10 @@ def test_speculative_decode_prefills_draft_once_and_reuses_cache() -> None:
     assert result.draft_prefill_time_seconds >= 0.0
     assert result.time_to_first_token_seconds >= result.prefill_time_seconds
 
-def test_speculative_decode_recovers_from_middle_block_mismatch() -> None:
+@pytest.mark.parametrize("verification_mode", ["exact", "block"])
+def test_speculative_decode_recovers_from_middle_block_mismatch(
+    verification_mode: str,
+) -> None:
     class PrefixSumCausalLM:
         def __init__(
             self,
@@ -271,11 +284,69 @@ def test_speculative_decode_recovers_from_middle_block_mismatch() -> None:
         prompt,
         max_new_tokens=12,
         draft_tokens_per_round=4,
+        verification_mode=verification_mode,
     )
 
+    assert speculative.verification_mode == verification_mode
     assert torch.equal(
         baseline.generated_token_ids,
         speculative.generated_token_ids,
     )
     assert 0 < speculative.accepted_draft_tokens < speculative.proposed_tokens
     assert speculative.acceptance_rate > 0.5
+
+
+def test_exact_verification_handles_query_length_sensitive_target() -> None:
+    class QueryLengthSensitiveCausalLM(ToyCausalLM):
+        def __call__(self, **kwargs):
+            output = super().__call__(**kwargs)
+            input_ids = kwargs["input_ids"]
+            has_cache = kwargs.get("past_key_values") is not None
+            if has_cache and input_ids.shape[1] > 1:
+                # Simulate a low-precision target kernel whose q_len>1 block
+                # path flips one argmax while q_len=1 greedy decode is stable.
+                predictions = torch.argmax(output.logits, dim=-1)
+                predictions[:, 0] = (predictions[:, 0] + 1) % self.vocab_size
+                logits = torch.full_like(output.logits, -1_000.0)
+                logits.scatter_(2, predictions.unsqueeze(-1), 1_000.0)
+                output = ToyOutput(logits=logits, past_key_values=output.past_key_values)
+            return output
+
+    prompt = torch.tensor([[3, 4]], dtype=torch.long)
+    baseline = greedy_decode(ToyCausalLM(offset=1), prompt, max_new_tokens=9)
+
+    block = greedy_speculative_decode(
+        ToyCausalLM(offset=1),
+        QueryLengthSensitiveCausalLM(offset=1),
+        prompt,
+        max_new_tokens=9,
+        draft_tokens_per_round=4,
+        verification_mode="block",
+    )
+    exact = greedy_speculative_decode(
+        ToyCausalLM(offset=1),
+        QueryLengthSensitiveCausalLM(offset=1),
+        prompt,
+        max_new_tokens=9,
+        draft_tokens_per_round=4,
+        verification_mode="exact",
+    )
+
+    assert not torch.equal(block.generated_token_ids, baseline.generated_token_ids)
+    assert torch.equal(exact.generated_token_ids, baseline.generated_token_ids)
+    assert exact.verification_mode == "exact"
+    assert exact.target_forward_calls == baseline.target_forward_calls
+
+
+def test_speculative_decode_rejects_unknown_verification_mode() -> None:
+    model = ToyCausalLM()
+    prompt = torch.tensor([[1, 2]], dtype=torch.long)
+
+    with pytest.raises(ValueError, match="verification_mode"):
+        greedy_speculative_decode(
+            model,
+            model,
+            prompt,
+            max_new_tokens=2,
+            verification_mode="magic",
+        )

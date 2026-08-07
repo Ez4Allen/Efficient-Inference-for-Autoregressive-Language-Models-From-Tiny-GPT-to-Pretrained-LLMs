@@ -54,7 +54,7 @@ exercise. It is no longer the main small-model contribution.
 - Reuse persistent KV caches across speculative rounds
 - Crop rejected suffixes after mismatch
 - Synchronize target correction and bonus tokens into both caches
-- Preserve exact target-only greedy output
+- Preserve deterministic target-only greedy output in `exact` mode and measure block-mode equality
 - Measure acceptance, target-call reduction, TTFT, TPOT, latency, throughput, and
   peak memory
 

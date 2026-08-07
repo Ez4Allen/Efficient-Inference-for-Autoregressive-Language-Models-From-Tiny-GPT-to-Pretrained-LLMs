@@ -38,6 +38,8 @@ class ChatGenerationResult:
     accepted_draft_tokens: int = 0
     speculative_rounds: int = 0
     acceptance_rate: float = 0.0
+    verification_mode: str | None = None
+    generated_token_ids: tuple[int, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -51,6 +53,7 @@ def _endpoint_kwargs(endpoint: ModelEndpointConfig) -> dict[str, Any]:
         "trust_remote_code": endpoint.trust_remote_code,
         "local_files_only": endpoint.local_files_only,
         "load_in_4bit": endpoint.load_in_4bit,
+        "attn_implementation": endpoint.attn_implementation,
     }
 
 
@@ -138,6 +141,9 @@ def _autoregressive_result(
         tokens_per_second=throughput,
         target_forward_calls=output.target_forward_calls,
         target_prefill_seconds=output.prefill_time_seconds,
+        generated_token_ids=tuple(
+            int(value) for value in output.generated_token_ids[0].tolist()
+        ),
     )
 
 
@@ -179,6 +185,10 @@ def _speculative_result(
         accepted_draft_tokens=output.accepted_draft_tokens,
         speculative_rounds=output.speculative_rounds,
         acceptance_rate=output.acceptance_rate,
+        verification_mode=output.verification_mode,
+        generated_token_ids=tuple(
+            int(value) for value in output.generated_token_ids[0].tolist()
+        ),
     )
 
 
@@ -228,6 +238,7 @@ class QwenPairRuntime:
         engine: str | None = None,
         max_new_tokens: int | None = None,
         draft_tokens_per_round: int | None = None,
+        verification_mode: str | None = None,
         enable_thinking: bool | None = None,
     ) -> ChatGenerationResult:
         selected_engine = str(engine or self.config.generation.engine).casefold()
@@ -235,6 +246,9 @@ class QwenPairRuntime:
         draft_tokens = int(
             draft_tokens_per_round or self.config.generation.draft_tokens_per_round
         )
+        selected_verification_mode = str(
+            verification_mode or self.config.generation.verification_mode
+        ).strip().casefold()
         thinking = (
             self.config.generation.enable_thinking
             if enable_thinking is None
@@ -299,6 +313,7 @@ class QwenPairRuntime:
                 max_new_tokens=max_tokens,
                 draft_tokens_per_round=draft_tokens,
                 eos_token_id=_eos_token_id(pair.target),
+                verification_mode=selected_verification_mode,
             )
             return _speculative_result(
                 output,

@@ -79,7 +79,7 @@ def build(output: Path) -> Path:
         "Guide chunks": guide["counts"]["chunks"],
         "Regression cases": eval_manifest["total_count"],
         "Grounded train records": training["train_count"],
-        "Repository tests": 171,
+        "Repository tests": 184,
     }
     record_bars = {name.title(): value for name, value in catalog["record_type_counts"].items()}
     status_bars = {name: value for name, value in eval_manifest["status_distribution"].items()}

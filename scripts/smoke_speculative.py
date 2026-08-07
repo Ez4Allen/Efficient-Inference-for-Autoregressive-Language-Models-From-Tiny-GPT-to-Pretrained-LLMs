@@ -144,6 +144,7 @@ def main() -> None:
         max_new_tokens=5,
         draft_tokens_per_round=draft_tokens_per_round,
         eos_token_id=tokenizer.eos_token_id,
+        verification_mode="exact",
     )
 
     if device.type == "cuda":
@@ -170,6 +171,7 @@ def main() -> None:
         max_new_tokens=max_new_tokens,
         draft_tokens_per_round=draft_tokens_per_round,
         eos_token_id=tokenizer.eos_token_id,
+        verification_mode="exact",
     )
 
     if device.type == "cuda":
@@ -265,6 +267,7 @@ def main() -> None:
     print(f"Draft forward calls:        {speculative.draft_forward_calls}")
     print(f"Target forward calls:       {speculative.target_forward_calls}")
     print(f"Speculative rounds:         {speculative.speculative_rounds}")
+    print(f"Verification mode:          {speculative.verification_mode}")
     print(f"Proposed tokens:            {speculative.proposed_tokens}")
     print(
         f"Accepted draft tokens:      "

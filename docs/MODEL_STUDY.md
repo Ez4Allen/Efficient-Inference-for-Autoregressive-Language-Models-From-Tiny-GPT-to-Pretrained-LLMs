@@ -147,7 +147,8 @@ by the target bonus token, which is also synchronized into both caches.
 
 The benchmark records:
 
-- output hash and exact target/speculative match;
+- generated token IDs, output hash, verification mode, and exact
+  target/speculative match;
 - prompt and output tokens;
 - draft and target prefill times;
 - actual time to first available output token;

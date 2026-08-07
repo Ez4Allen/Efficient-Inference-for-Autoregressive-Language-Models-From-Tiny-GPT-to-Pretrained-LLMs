@@ -39,15 +39,15 @@ drafts.
 - RMSNorm, RoPE, grouped-query attention, Q/K RMSNorm, SwiGLU, and persistent
   crop-able KV cache;
 - assistant-only sequence-level target adaptation pipeline;
-- persistent-cache greedy speculative decoder with exact target-only token
-  equality;
+- persistent-cache greedy speculative decoder with target-consistent `exact`
+  verification and performance-oriented `block` verification;
 - target/draft agreement, top-k overlap, entropy, JS divergence, acceptance,
   and latency instrumentation.
 
 ## Reliability and reproducibility
 
 - one command: `python scripts/build_stardew_release.py`;
-- 171 offline tests passed;
+- 184 offline tests passed;
 - 100/100 deterministic Stardew regression cases passed;
 - release manifests include counts and SHA-256 hashes;
 - formal evaluation is excluded from training data;

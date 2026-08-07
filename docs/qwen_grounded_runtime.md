@@ -69,9 +69,10 @@ The current decoder supports:
 
 - batch size one;
 - greedy generation;
-- exact equality with target-only greedy output.
+- deterministic target-only equality in `exact` mode;
+- measured token-ID equality in `block` mode.
 
-It does not implement speculative sampling.
+Block mode can optionally be rerun with a configured Hugging Face attention backend (for example `eager`) to diagnose query-length-sensitive mixed-precision kernels. It does not implement speculative sampling.
 
 ## Commands
 

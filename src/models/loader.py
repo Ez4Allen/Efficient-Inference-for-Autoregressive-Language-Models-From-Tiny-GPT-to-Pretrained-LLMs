@@ -179,6 +179,7 @@ def load_causal_lm(
     tokenizer_name: str | Path | None = None,
     adapter_path: str | Path | None = None,
     load_in_4bit: bool = False,
+    attn_implementation: str | None = None,
     bnb_4bit_quant_type: str = "nf4",
     bnb_4bit_use_double_quant: bool = True,
 ) -> ModelBundle:
@@ -240,6 +241,15 @@ def load_causal_lm(
         )
     if is_tiny_qwen_draft and adapter_path is not None:
         raise ValueError("PEFT adapters are not supported for TinyQwenDraft checkpoints.")
+    if (
+        is_tiny_qwen_draft
+        and attn_implementation is not None
+        and str(attn_implementation).strip().casefold() != "sdpa"
+    ):
+        raise ValueError(
+            "TinyQwenDraft uses PyTorch SDPA internally; its "
+            "attn_implementation may be omitted or set to 'sdpa'."
+        )
 
     print(f"Loading model: {resolved_model_name}")
     print(f"Tokenizer: {resolved_tokenizer_name}")
@@ -247,6 +257,8 @@ def load_causal_lm(
     print(f"Dtype: {resolved_dtype}")
     if load_in_4bit:
         print("Quantization: 4-bit NF4")
+    if attn_implementation is not None:
+        print(f"Attention implementation: {attn_implementation}")
 
     tokenizer = AutoTokenizer.from_pretrained(
         resolved_tokenizer_name,
@@ -285,6 +297,8 @@ def load_causal_lm(
             "local_files_only": model_local_only,
             "low_cpu_mem_usage": True,
         }
+        if attn_implementation is not None:
+            model_kwargs["attn_implementation"] = str(attn_implementation)
 
         if load_in_4bit:
             try:

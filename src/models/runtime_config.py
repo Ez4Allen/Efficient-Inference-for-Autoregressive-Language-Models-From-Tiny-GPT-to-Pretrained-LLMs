@@ -19,6 +19,7 @@ class ModelEndpointConfig:
     trust_remote_code: bool = False
     local_files_only: bool = False
     load_in_4bit: bool = False
+    attn_implementation: str | None = None
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,7 @@ class GenerationConfig:
     engine: str = "target"
     max_new_tokens: int = 256
     draft_tokens_per_round: int = 4
+    verification_mode: str = "exact"
     enable_thinking: bool = False
 
 
@@ -74,6 +76,8 @@ def _endpoint(payload: dict[str, Any], name: str) -> ModelEndpointConfig:
     tokenizer_value = str(tokenizer).strip() if tokenizer else None
     adapter = payload.get("adapter_path")
     adapter_value = str(adapter).strip() if adapter else None
+    attention = payload.get("attn_implementation")
+    attention_value = str(attention).strip() if attention else None
     return ModelEndpointConfig(
         model_name_or_path=model_reference,
         tokenizer_name_or_path=tokenizer_value,
@@ -81,6 +85,7 @@ def _endpoint(payload: dict[str, Any], name: str) -> ModelEndpointConfig:
         trust_remote_code=bool(payload.get("trust_remote_code", False)),
         local_files_only=bool(payload.get("local_files_only", False)),
         load_in_4bit=bool(payload.get("load_in_4bit", False)),
+        attn_implementation=attention_value,
     )
 
 
@@ -108,10 +113,17 @@ def load_qwen_pair_config(path: str | Path) -> QwenPairConfig:
 
     max_new_tokens = int(generation.get("max_new_tokens", 256))
     draft_tokens = int(generation.get("draft_tokens_per_round", 4))
+    verification_mode = str(
+        generation.get("verification_mode", "exact")
+    ).strip().casefold()
     if max_new_tokens <= 0:
         raise ValueError("generation.max_new_tokens must be positive.")
     if draft_tokens <= 0:
         raise ValueError("generation.draft_tokens_per_round must be positive.")
+    if verification_mode not in {"exact", "block"}:
+        raise ValueError(
+            "generation.verification_mode must be exact or block."
+        )
 
     prompt_mode = str(grounding.get("prompt_mode", "evidence_only")).strip().casefold()
     evidence_policy = str(grounding.get("evidence_policy", "compact")).strip().casefold()
@@ -144,6 +156,7 @@ def load_qwen_pair_config(path: str | Path) -> QwenPairConfig:
             engine=engine,
             max_new_tokens=max_new_tokens,
             draft_tokens_per_round=draft_tokens,
+            verification_mode=verification_mode,
             enable_thinking=bool(generation.get("enable_thinking", False)),
         ),
         grounding=GroundingConfig(

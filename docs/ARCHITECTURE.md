@@ -190,10 +190,15 @@ repeat:
     feed accepted final proposal/bonus into the required caches
 ```
 
-The result is token-identical to target-only greedy decoding. The current scope
-is intentionally limited to greedy generation and batch size one. Sampling
-requires probability-based acceptance/rejection and residual sampling and is a
-separate algorithm.
+The runtime exposes two verification modes. `exact` checks candidates through
+the same one-token target path as target-only greedy decoding and is
+token-identical for a deterministic target in evaluation mode. `block` verifies
+the full block in one target call for speed experiments; low-precision GPU
+kernels can be query-length
+sensitive, so its exact target-match rate is measured rather than assumed. The
+current scope remains greedy generation and batch size one. Sampling requires
+probability-based acceptance/rejection and residual sampling and is a separate
+algorithm.
 
 ## 7. Training
 

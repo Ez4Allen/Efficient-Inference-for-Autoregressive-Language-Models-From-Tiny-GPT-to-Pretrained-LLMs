@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — speculative correctness hardening
+
+- Added explicit `exact` and `block` greedy speculative-verification modes.
+- Added token-ID exact-match measurement and a real-checkpoint block-consistency diagnostic.
+- Added regression coverage for query-length-sensitive target behavior and cache rollback.
+- Expanded the offline test suite from 171 to 184 tests.
+
 ## 1.1.0 — Stardew release and TinyQwenDraft foundation
 
 - Expanded Stardew from a 31-record integration seed to 505 versioned structured records and 317 acquisition relations.
