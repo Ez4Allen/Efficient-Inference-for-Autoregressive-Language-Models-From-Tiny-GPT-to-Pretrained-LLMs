@@ -3,18 +3,32 @@
   "game": "stardew_valley",
   "game_version": "1.6.15",
   "platform": "all",
-  "record_count": 31,
+  "record_count": 505,
   "record_type_counts": {
-    "bundle": 4,
-    "crop": 8,
-    "fish": 10,
-    "recipe": 5,
-    "villager": 4
+    "acquisition": 228,
+    "bundle": 30,
+    "crop": 41,
+    "fish": 55,
+    "recipe": 117,
+    "villager": 34
   },
+  "acquisition_relation_count": 317,
+  "source_page_count": 263,
   "source_name": "Official Stardew Valley Wiki",
   "license_name": "CC BY-NC-SA 3.0",
-  "generated_at": "2026-07-27T00:00:07+00:00",
+  "generated_at": "2026-08-05T00:00:00+00:00",
+  "facts_sha256": "f32fd7038edfd2fa0a8ef37b3b5c91be92c29bf143321781dfdd4171d735724d",
+  "coverage_contract": {
+    "crops_minimum": 30,
+    "fish_minimum": 50,
+    "villagers_minimum": 20,
+    "recipes_minimum": 100,
+    "standard_bundles_complete": true,
+    "acquisition_relations_minimum": 150
+  },
   "notes": [
-    "Compact high-confidence starter snapshot. Extend or replace with the teammate-maintained Stardew pipeline before final evaluation."
+    "Curated versioned release snapshot for deterministic demos and course evaluation.",
+    "Standard Bundles are complete; Remixed Bundle coverage is intentionally represented as partial rather than inferred.",
+    "Facts were structured from official Wiki pages and should be re-audited when the target game version changes."
   ]
 }

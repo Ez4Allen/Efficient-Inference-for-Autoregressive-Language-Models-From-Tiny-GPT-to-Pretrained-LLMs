@@ -1,127 +1,126 @@
-# Grounded Qwen runtime
+# Grounded target/draft runtime
 
 ## Purpose
 
-The Terraria catalog and guide corpus remain the factual grounding layer. They
-are not replaced by a model-specific chatbot implementation. The LLM is added
+The Terraria and Stardew knowledge layers remain the factual grounding source.
+They are not replaced by a model-specific chatbot implementation. The LLM runs
 only after routing and retrieval:
 
 ```text
 question
-  -> IntentRouter / EntityResolver
-  -> FactService or GuideDocumentStore
-  -> ContextBuilder with [S1], [S2], ... provenance
+  -> game IntentRouter / EntityResolver
+  -> FactService or GuideStore
+  -> bounded evidence with [S1], [S2], ... provenance
   -> QwenPairRuntime
   -> grounding validator
   -> LLM answer or deterministic fallback
 ```
 
-The deterministic renderer is retained as a safety baseline. Missing,
-ambiguous, failed, or uncited model output falls back to that answer.
+The deterministic renderer is retained as the safety baseline. Missing,
+ambiguous, failed, or unsupported model output falls back to that answer.
 
-## Model pair
+## Model pairs
 
-The default research pair is:
+The fixed target is:
 
-- draft: `Qwen/Qwen3-0.6B`
-- target: `Qwen/Qwen3-4B`
+```text
+Qwen/Qwen3-4B
+```
 
-They are text-only dense Qwen3 causal language models. The runtime checks the
-full tokenizer vocabulary, added tokens, and special token IDs before paired
-speculative generation. This check is mandatory; sharing a brand name alone is
-not sufficient.
+The runtime supports two draft tracks:
 
-Qwen3.5 was not selected for the first speculative-decoding experiment because
-its multimodal hybrid DeltaNet/attention architecture and state cache would
-require a different loader and cache-management implementation. That would mix
-an architecture port with the first decoding optimization experiment.
+```text
+Qwen/Qwen3-0.6B -> Qwen/Qwen3-4B
+TinyQwenDraft   -> Qwen/Qwen3-4B
+```
+
+The pretrained 0.6B model is the reliable baseline. The custom draft is a
+research model implemented in this repository and trained on fixed-target
+continuations.
+
+Paired speculative generation requires identical token IDs. The runtime checks:
+
+- complete token-to-ID vocabulary;
+- added tokens;
+- BOS/EOS/PAD/UNK IDs;
+- for custom checkpoints, recorded vocabulary and chat-template SHA-256.
+
+Sharing a model-family name is not enough.
 
 ## Existing code reused
 
-The integration extends rather than replaces the project modules:
+- `src/models/loader.py`: shared Hugging Face/custom checkpoint loader;
+- `src/inference/autoregressive.py`: target and draft greedy baselines;
+- `src/inference/speculative.py`: persistent-cache greedy speculative decoder;
+- `src/inference/chat_runtime.py`: paired chat orchestration and metrics;
+- `src/training/train_sft.py`: target and pretrained-draft PEFT training;
+- `src/training/tiny_qwen_draft.py`: custom from-scratch draft training;
+- `src/gameguide/*`: retrieval, prompting, validation, and fallback.
 
-- `src/models/loader.py` remains the single model loader.
-- `src/inference/autoregressive.py` remains the target and draft baseline.
-- `src/inference/speculative.py` remains the correctness-first speculative
-  baseline.
-- `src/training/train_sft.py` remains the optional QLoRA training path.
-- `src/assistant/*` remains the retrieval and grounding pipeline.
+## Persistent cache behavior
 
-New orchestration lives in `src/inference/chat_runtime.py` and
-`src/assistant/qwen_generator.py`.
+Both models prefill the prompt exactly once. Each speculative round proposes a
+block from the draft cache and verifies it with the target cache. On mismatch,
+both caches are cropped to the accepted prefix before the target correction
+token is processed. On full acceptance, the target bonus token is synchronized
+into both models.
 
-## No training is required for the first run
+The current decoder supports:
 
-The assistant can run directly with the two post-trained base checkpoints. A
-LoRA adapter is optional. If an adapter is configured for the target, it must
-have been trained from the exact target base checkpoint in the pair. An adapter
-trained from `Qwen3-4B-Instruct-2507` must not be attached to `Qwen3-4B`.
+- batch size one;
+- greedy generation;
+- exact equality with target-only greedy output.
+
+It does not implement speculative sampling.
 
 ## Commands
 
-Build the factual databases first:
+Build factual backends first:
 
 ```bash
 python scripts/build_terraria_knowledge.py --quiet
-python scripts/build_terraria_guides.py --offline
+python scripts/build_stardew_knowledge.py --quiet
 ```
 
-Run the large-model autoregressive assistant:
+Target-only grounded generation:
 
 ```bash
-python scripts/chat_terraria_llm.py \
-  "进入困难模式后该做什么？" \
+python scripts/chat_gameguide.py \
+  --game terraria \
+  --llm \
   --engine target \
-  --debug
+  "What should I do after entering Hardmode?"
 ```
 
-Run the small model independently:
+Pretrained draft/speculative baseline uses:
 
-```bash
-python scripts/chat_terraria_llm.py \
-  "夜之刃怎么合成？" \
-  --engine draft \
-  --debug
+```text
+configs/gameguidelm_qwen3_pair.yaml
 ```
 
-Run the existing correctness-first speculative baseline:
+Custom draft/speculative research uses:
 
-```bash
-python scripts/chat_terraria_llm.py \
-  "What should I do after entering Hardmode?" \
-  --engine speculative \
-  --debug
+```text
+configs/gameguidelm_tiny_qwen_pair.yaml
 ```
 
-Validate and compare the model pair:
+The custom config is valid only after `results/tiny_qwen_draft/final` has been
+created.
 
-```bash
-python scripts/smoke_qwen_pair.py \
-  --engines draft target speculative
-```
+## Training order
 
-## Next inference work
+1. Record target-only and pretrained speculative baselines.
+2. Freeze target checkpoint, tokenizer, chat template, and prompt policy.
+3. Generate separate target-teacher train and validation data.
+4. Optionally adapt Qwen3-0.6B with LoRA.
+5. Train `TinyQwenDraft` from random initialization.
+6. Validate exact tokenizer contracts.
+7. Compare both drafts under identical prompts and settings.
 
-The current speculative implementation is a correctness baseline. It recomputes
-the draft prefix each round and is not expected to be fast. The next isolated
-optimization should reuse the draft KV cache, then benchmark target-only versus
-speculative decoding on identical prompts and outputs using TTFT, TPOT,
-throughput, acceptance rate, forward-call counts, and peak GPU memory.
+Formal evaluation data must never be used to generate teacher training records.
 
-## Optional domain adapters
+## Claim boundary
 
-Training is not part of the initial inference integration. If domain adapters
-are later useful, the repository includes matching configs for both members of
-the pair:
-
-```bash
-python -m src.training.train_sft \
-  --config configs/terraria_qwen3_0_6b_qlora.yaml
-
-python -m src.training.train_sft \
-  --config configs/terraria_qwen3_4b_qlora.yaml
-```
-
-Training both checkpoints on aligned data can improve draft/target agreement,
-but acceptance-rate changes must be measured rather than assumed. The factual
-database remains the source of truth even after SFT.
+The implementation now has persistent caches, but that alone does not guarantee
+speedup. Acceptance, vocabulary-projection cost, target verification cost,
+prompt length, output length, and GPU behavior must be measured end to end.

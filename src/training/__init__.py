@@ -1,8 +1,10 @@
-"""Supervised fine-tuning entry points.
+"""Training entry points with optional dependencies imported lazily."""
 
-Optional training dependencies are imported lazily so the core package remains usable
-without PEFT or bitsandbytes.
-"""
+from .tiny_qwen_draft import (
+    TinyQwenDraftTrainingConfig,
+    load_tiny_qwen_draft_training_config,
+    train_tiny_qwen_draft,
+)
 
 
 def train_sft_main() -> None:
@@ -11,4 +13,9 @@ def train_sft_main() -> None:
     main()
 
 
-__all__ = ["train_sft_main"]
+__all__ = [
+    "TinyQwenDraftTrainingConfig",
+    "load_tiny_qwen_draft_training_config",
+    "train_sft_main",
+    "train_tiny_qwen_draft",
+]

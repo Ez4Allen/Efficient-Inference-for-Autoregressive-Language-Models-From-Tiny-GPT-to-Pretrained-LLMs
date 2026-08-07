@@ -55,6 +55,10 @@ class StardewIntentRouter:
             "fish_availability": (
                 r"where (?:and when )?can i catch (?P<entity>.+?)\??$",
                 r"when can i catch (?P<entity>.+?)\??$",
+                r"when can (?P<entity>.+?) be caught\??$",
+                r"where is (?P<entity>.+?) available\??$",
+                r"what conditions are required for (?P<entity>.+?)\??$",
+                r"(?P<entity>.+?)(?:在哪里[、,，]?什么时候能钓|在哪里[、,，]?什么时候可以钓)[？?]?$",
                 r"(?P<entity>.+?)在哪里钓[？?]?$",
                 r"(?P<entity>.+?)什么时候能钓[？?]?$",
             ),
@@ -64,8 +68,15 @@ class StardewIntentRouter:
                 r"(?P<entity>.+?)喜欢什么礼物[？?]?$",
             ),
             "recipe": (
-                r"how do i (?:craft|make) (?P<entity>.+?)\??$",
-                r"(?P<entity>.+?)怎么(?:做|制作)[？?]?$",
+                r"how do i (?:craft|make|cook) (?P<entity>.+?)\??$",
+                r"(?:what is the recipe for|recipe for) (?P<entity>.+?)\??$",
+                r"(?P<entity>.+?)怎么(?:做|制作|烹饪)[？?]?$",
+                r"(?P<entity>.+?)的配方是什么[？?]?$",
+            ),
+            "acquisition": (
+                r"where can i (?:get|buy|find|obtain) (?P<entity>.+?)\??$",
+                r"how (?:do|can) i (?:get|obtain|find) (?P<entity>.+?)\??$",
+                r"(?P<entity>.+?)(?:怎么获得|如何获得|哪里买|在哪买|从哪里获得)[？?]?$",
             ),
         }
         for pattern in patterns.get(intent, ()):
@@ -101,6 +112,11 @@ class StardewIntentRouter:
                 if any(term in folded for term in terms):
                     state.weather = weather
                     break
+        if state.bundle_mode is None:
+            if "remixed" in folded or "混合收集包" in folded or "重混" in folded:
+                state.bundle_mode = "remixed"
+            elif "standard" in folded or "标准收集包" in folded:
+                state.bundle_mode = "standard"
         return state
 
     def route(
@@ -132,11 +148,25 @@ class StardewIntentRouter:
                 "if i plant",
                 "planting day",
                 "before season ends",
+                "还能收获",
+                "能不能收获",
+                "可以收获吗",
             )
         )
-        fish_pattern = any(term in folded for term in ("where", "when", "weather", "catch", "fish", "哪里", "什么时候", "天气", "怎么钓", "能钓"))
+        fish_pattern = any(term in folded for term in (
+            "where can i catch", "when can i catch", "where is", "when is",
+            "what conditions", "available", "weather", "catch", "caught",
+            "钓", "什么时候能钓", "在哪里钓", "哪里钓", "天气",
+        ))
         gift_pattern = any(term in folded for term in ("gift", "love", "favorite", "喜欢", "礼物", "最爱"))
         crop_info_pattern = any(term in folded for term in ("take to grow", "days to grow", "mature", "crop", "几天成熟", "作物"))
+        acquisition_pattern = any(term in folded for term in ("where can i get", "where can i buy", "where can i find", "how do i get", "how can i get", "obtain", "怎么获得", "如何获得", "哪里买", "在哪买", "从哪里获得"))
+        reverse_bundle_pattern = any(term in folded for term in ("which bundle", "what bundle", "requires this", "哪个收集包", "哪个献祭包", "需要这个物品"))
+        planting_recommendation_pattern = any(term in folded for term in ("what should i plant", "which crop should i plant", "what crop should", "今天种什么", "应该种什么", "种哪种作物"))
+        cooking_progression_pattern = any(term in folded for term in (
+            "unlock more cooking recipes", "learn more cooking recipes", "get more cooking recipes",
+            "解锁更多烹饪配方", "学习更多烹饪配方",
+        ))
 
         # For explicit question templates, resolve the extracted entity as a
         # complete name. This prevents a known entity such as ``Catfish`` from
@@ -149,6 +179,7 @@ class StardewIntentRouter:
                 "fish_availability",
                 "villager_gifts",
                 "recipe",
+                "acquisition",
             )
         }
 
@@ -162,7 +193,16 @@ class StardewIntentRouter:
                 return str(match["name"]), str(match["record_type"])
             return extracted, None
 
-        if crop_deadline_pattern:
+        if acquisition_pattern:
+            extracted = extracted_by_intent.get("acquisition")
+            if extracted:
+                lookup = self.store.get_acquisition(extracted)
+                if lookup.get("status") == "found":
+                    match = lookup["match"]
+                    entity_name, entity_type = str((match.get("facts") or {}).get("entity_name") or match["name"]), "acquisition"
+                else:
+                    entity_name, entity_type = extracted, None
+        elif crop_deadline_pattern:
             extracted_name, extracted_type = exact_extracted("crop_deadline", "crop")
             if extracted_name is not None:
                 entity_name, entity_type = extracted_name, extracted_type
@@ -179,7 +219,26 @@ class StardewIntentRouter:
             if extracted_name is not None:
                 entity_name, entity_type = extracted_name, extracted_type
 
-        if (entity_type == "crop" and crop_deadline_pattern) or (entity_type is None and crop_deadline_pattern):
+        if planting_recommendation_pattern:
+            intent = "guide"
+            entity_name = None
+            missing = [field for field in ("season", "day") if getattr(state, field) is None]
+            reason_codes.append("planting_recommendation_pattern")
+        elif cooking_progression_pattern:
+            intent = "guide"
+            entity_name = None
+            missing = []
+            reason_codes.append("cooking_progression_pattern")
+        elif acquisition_pattern:
+            intent = "acquisition"
+            entity_name = extracted_by_intent.get(intent) or entity_name or self._extract_unknown_entity(text, intent)
+            missing = []
+            reason_codes.append("acquisition_pattern")
+        elif reverse_bundle_pattern and entity_name:
+            intent = "bundles_requiring_item"
+            missing = []
+            reason_codes.append("reverse_bundle_pattern")
+        elif (entity_type == "crop" and crop_deadline_pattern) or (entity_type is None and crop_deadline_pattern):
             intent = "crop_deadline"
             entity_name = extracted_by_intent.get(intent) or entity_name or self._extract_unknown_entity(text, intent)
             missing = [field for field in ("season", "day") if getattr(state, field) is None]
@@ -204,7 +263,7 @@ class StardewIntentRouter:
             intent = "villager_info"
             missing = []
             reason_codes.append("villager_entity")
-        elif entity_type == "recipe" or any(term in folded for term in ("recipe", "craft", "how do i make", "怎么做", "怎么制作", "配方")):
+        elif entity_type == "recipe" or any(term in folded for term in ("recipe", "craft", "how do i make", "how do i cook", "怎么做", "怎么制作", "怎么烹饪", "配方")):
             intent = "recipe"
             entity_name = extracted_by_intent.get(intent) or entity_name or self._extract_unknown_entity(text, intent) or text
             missing = []
@@ -217,10 +276,6 @@ class StardewIntentRouter:
             intent = "crop_info"
             missing = []
             reason_codes.append("crop_entity")
-        elif any(term in folded for term in ("which bundle", "what bundle", "哪个收集包", "献祭包")) and entity_name:
-            intent = "bundles_requiring_item"
-            missing = []
-            reason_codes.append("reverse_bundle_pattern")
         elif any(term in folded for term in self.GUIDE_PATTERNS):
             intent = "guide"
             missing = []

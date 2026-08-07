@@ -1,30 +1,65 @@
 {
-  "status": "passed",
+  "status": "engineering_passed_human_review_pending",
   "project": "GameGuideLM",
-  "version": "1.0.0",
-  "validated_on": "2026-07-27",
+  "version": "1.1.0",
+  "validated_on": "2026-08-07",
   "python_test_suite": {
-    "passed": 140
+    "passed": 171,
+    "failed": 0
   },
-  "release_validator": {
-    "command": "python scripts/validate_release.py --skip-pytest",
-    "status": "passed"
+  "release_builder": {
+    "command": "python scripts/build_stardew_release.py",
+    "status": "passed",
+    "steps": 9
   },
   "stardew": {
-    "record_count": 31,
-    "integrity_check": "ok",
-    "smoke_query": "Parsnip deadline passed"
+    "record_count": 505,
+    "acquisition_relations": 317,
+    "guide_pages": 25,
+    "guide_chunks": 100,
+    "regression_examples": 100,
+    "regression_passed": 100,
+    "status_accuracy": 1.0,
+    "intent_accuracy": 1.0,
+    "required_fact_coverage": 1.0,
+    "forbidden_error_rate": 0.0,
+    "human_review_status": "pending"
+  },
+  "training_isolation": {
+    "grounded_train": 159,
+    "grounded_validation": 17,
+    "formal_evaluation_question_overlap": 0,
+    "formal_evaluation_files_excluded": true
+  },
+  "legacy_sft": {
+    "records": 1262,
+    "verified_true": 0,
+    "pending_review": 1262,
+    "cross_split_source_overlap": 0,
+    "cross_split_template_overlap": 0
   },
   "terraria": {
-    "linked_recipe_records": 3409,
-    "linked_drop_records": 3144,
     "resolved_references": 14353,
-    "smoke_query": "Night's Edge recipe passed"
+    "status": "passed"
+  },
+  "model_experiments": {
+    "qwen_gpu_training": "not_executed",
+    "tiny_qwen_draft_training": "not_executed",
+    "speculative_gpu_benchmark": "not_executed"
   },
   "claim_boundaries": [
-    "No model weights or trained LoRA adapters are distributed.",
-    "The Stardew snapshot is a compact integration seed, not full-Wiki coverage.",
-    "The speculative decoder is a correctness-first baseline; speedup is an experiment, not a release claim.",
-    "Online Wiki corpora and SQLite databases are generated locally and are not distributed."
-  ]
+    "The 100/100 result measures deterministic regression behavior against generated expectations, not an independent model benchmark.",
+    "Human source review is required before formal approval of evaluation records.",
+    "No model speedup or quality gain is claimed without GPU experiments.",
+    "No model weights or trained adapters are distributed."
+  ],
+  "distribution_scope": {
+    "source_code": true,
+    "curated_stardew_snapshots": true,
+    "interactive_html_demo": true,
+    "colab_demo_notebook": true,
+    "final_report": false,
+    "presentation_deck": false,
+    "model_weights": false
+  }
 }

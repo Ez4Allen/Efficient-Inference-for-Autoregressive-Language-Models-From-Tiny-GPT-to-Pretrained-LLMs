@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
+from src.models.tokenizer_contract import validate_model_tokenizer_contract
 from src.utils.device import resolve_device
+from src.utils.io import read_json
 from src.utils.paths import PROJECT_ROOT
 
 if TYPE_CHECKING:
@@ -142,6 +144,31 @@ def _load_adapter(
     return model, resolved_adapter
 
 
+def _contains_tokenizer_files(directory: str | Path) -> bool:
+    root = Path(directory)
+    markers = (
+        "tokenizer_config.json",
+        "tokenizer.json",
+        "vocab.json",
+        "spiece.model",
+        "tokenizer.model",
+    )
+    return any((root / marker).exists() for marker in markers)
+
+
+def _local_model_type(reference: str, is_local: bool) -> str | None:
+    if not is_local:
+        return None
+    config_path = Path(reference) / "config.json"
+    if not config_path.exists():
+        return None
+    payload = read_json(config_path)
+    if not isinstance(payload, dict):
+        raise TypeError(f"Model config must be a JSON object: {config_path}")
+    value = payload.get("model_type")
+    return str(value) if value is not None else None
+
+
 def load_causal_lm(
     model_name: str | Path = "openai-community/gpt2",
     device: str | torch.device | None = None,
@@ -149,38 +176,82 @@ def load_causal_lm(
     trust_remote_code: bool = False,
     local_files_only: bool = False,
     *,
+    tokenizer_name: str | Path | None = None,
     adapter_path: str | Path | None = None,
     load_in_4bit: bool = False,
     bnb_4bit_quant_type: str = "nf4",
     bnb_4bit_use_double_quant: bool = True,
 ) -> ModelBundle:
-    """Load a causal LM from Hugging Face or a local directory.
+    """Load a Hugging Face causal LM or a local ``TinyQwenDraft`` checkpoint.
 
-    The function is shared by assistant inference, benchmarking, training
-    smoke tests, and speculative decoding. Optional PEFT adapters are attached
-    after the base checkpoint is loaded.
+    ``tokenizer_name`` lets a custom draft checkpoint use the exact tokenizer
+    of its target model.  The tokenizer mapping and special IDs are validated
+    against metadata stored in the draft config before inference starts.
     """
 
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+    try:
+        from transformers import AutoTokenizer
+    except ImportError as error:
+        raise RuntimeError(
+            "Model loading requires Transformers. Install project dependencies "
+            "with `pip install -r requirements.txt`."
+        ) from error
 
     resolved_model_name, model_is_local = _resolve_reference(model_name)
-    effective_local_files_only = local_files_only or model_is_local
+    model_type = _local_model_type(resolved_model_name, model_is_local)
+    is_tiny_qwen_draft = model_type == "tiny_qwen_draft"
+
+    tokenizer_reference: str | Path
+    if tokenizer_name is not None:
+        tokenizer_reference = tokenizer_name
+    elif is_tiny_qwen_draft:
+        draft_config = read_json(Path(resolved_model_name) / "config.json")
+        recorded_tokenizer = (
+            draft_config.get("tokenizer_name_or_path")
+            if isinstance(draft_config, dict)
+            else None
+        )
+        # Final custom checkpoints save an exact copy of the target tokenizer.
+        # Prefer that self-contained local copy; fall back to the recorded target
+        # reference for intermediate checkpoints that contain only weights/config.
+        tokenizer_reference = (
+            resolved_model_name
+            if _contains_tokenizer_files(resolved_model_name)
+            else recorded_tokenizer or model_name
+        )
+    else:
+        tokenizer_reference = model_name
+
+    resolved_tokenizer_name, tokenizer_is_local = _resolve_reference(
+        tokenizer_reference
+    )
+    tokenizer_local_only = local_files_only or tokenizer_is_local
+    model_local_only = local_files_only or model_is_local
+
     resolved_device = resolve_device(device)
     resolved_dtype = resolve_dtype(resolved_device, dtype)
 
     if load_in_4bit and resolved_device.type != "cuda":
         raise RuntimeError("4-bit bitsandbytes inference requires a CUDA GPU.")
+    if is_tiny_qwen_draft and load_in_4bit:
+        raise ValueError(
+            "TinyQwenDraft does not use bitsandbytes 4-bit loading; keep the "
+            "small draft in BF16/FP16 instead."
+        )
+    if is_tiny_qwen_draft and adapter_path is not None:
+        raise ValueError("PEFT adapters are not supported for TinyQwenDraft checkpoints.")
 
     print(f"Loading model: {resolved_model_name}")
+    print(f"Tokenizer: {resolved_tokenizer_name}")
     print(f"Device: {resolved_device}")
     print(f"Dtype: {resolved_dtype}")
     if load_in_4bit:
         print("Quantization: 4-bit NF4")
 
     tokenizer = AutoTokenizer.from_pretrained(
-        resolved_model_name,
+        resolved_tokenizer_name,
         trust_remote_code=trust_remote_code,
-        local_files_only=effective_local_files_only,
+        local_files_only=tokenizer_local_only,
         use_fast=True,
     )
 
@@ -189,52 +260,70 @@ def load_causal_lm(
             raise ValueError("Tokenizer has neither a PAD token nor an EOS token.")
         tokenizer.pad_token = tokenizer.eos_token
 
-    model_kwargs: dict[str, Any] = {
-        "dtype": resolved_dtype,
-        "trust_remote_code": trust_remote_code,
-        "local_files_only": effective_local_files_only,
-        "low_cpu_mem_usage": True,
-    }
+    resolved_adapter: str | None = None
+    if is_tiny_qwen_draft:
+        from src.models.tiny_qwen_draft import TinyQwenDraft
 
-    if load_in_4bit:
+        model = TinyQwenDraft.from_pretrained(
+            resolved_model_name,
+            map_location="cpu",
+        )
+        model.to(device=resolved_device, dtype=resolved_dtype)
+        validate_model_tokenizer_contract(model, tokenizer)
+    else:
         try:
-            from transformers import BitsAndBytesConfig
+            from transformers import AutoModelForCausalLM
         except ImportError as error:
             raise RuntimeError(
-                "4-bit inference requires a Transformers build with "
-                "BitsAndBytesConfig and the bitsandbytes package."
+                "Model loading requires Transformers. Install project dependencies "
+                "with `pip install -r requirements.txt`."
             ) from error
 
-        model_kwargs["quantization_config"] = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_quant_type=str(bnb_4bit_quant_type),
-            bnb_4bit_use_double_quant=bool(bnb_4bit_use_double_quant),
-            bnb_4bit_compute_dtype=resolved_dtype,
+        model_kwargs: dict[str, Any] = {
+            "dtype": resolved_dtype,
+            "trust_remote_code": trust_remote_code,
+            "local_files_only": model_local_only,
+            "low_cpu_mem_usage": True,
+        }
+
+        if load_in_4bit:
+            try:
+                from transformers import BitsAndBytesConfig
+            except ImportError as error:
+                raise RuntimeError(
+                    "4-bit inference requires a Transformers build with "
+                    "BitsAndBytesConfig and the bitsandbytes package."
+                ) from error
+
+            model_kwargs["quantization_config"] = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type=str(bnb_4bit_quant_type),
+                bnb_4bit_use_double_quant=bool(bnb_4bit_use_double_quant),
+                bnb_4bit_compute_dtype=resolved_dtype,
+            )
+
+        if resolved_device.type == "cuda":
+            device_index = (
+                resolved_device.index
+                if resolved_device.index is not None
+                else torch.cuda.current_device()
+            )
+            model_kwargs["device_map"] = {"": device_index}
+
+        model = AutoModelForCausalLM.from_pretrained(
+            resolved_model_name,
+            **model_kwargs,
         )
 
-    if resolved_device.type == "cuda":
-        device_index = (
-            resolved_device.index
-            if resolved_device.index is not None
-            else torch.cuda.current_device()
-        )
-        model_kwargs["device_map"] = {"": device_index}
+        if resolved_device.type != "cuda":
+            model.to(resolved_device)
 
-    model = AutoModelForCausalLM.from_pretrained(
-        resolved_model_name,
-        **model_kwargs,
-    )
-
-    if resolved_device.type != "cuda":
-        model.to(resolved_device)
-
-    resolved_adapter: str | None = None
-    if adapter_path is not None:
-        model, resolved_adapter = _load_adapter(
-            model,
-            adapter_path,
-            expected_base_model=resolved_model_name,
-        )
+        if adapter_path is not None:
+            model, resolved_adapter = _load_adapter(
+                model,
+                adapter_path,
+                expected_base_model=resolved_model_name,
+            )
 
     model.eval()
     if hasattr(model, "config"):
@@ -294,6 +383,8 @@ def load_speculative_models(
     trust_remote_code: bool = False,
     local_files_only: bool = False,
     *,
+    draft_tokenizer_name: str | Path | None = None,
+    target_tokenizer_name: str | Path | None = None,
     draft_adapter_path: str | Path | None = None,
     target_adapter_path: str | Path | None = None,
     draft_load_in_4bit: bool = False,
@@ -307,6 +398,7 @@ def load_speculative_models(
         dtype=dtype,
         trust_remote_code=trust_remote_code,
         local_files_only=local_files_only,
+        tokenizer_name=draft_tokenizer_name,
         adapter_path=draft_adapter_path,
         load_in_4bit=draft_load_in_4bit,
     )
@@ -317,6 +409,7 @@ def load_speculative_models(
         dtype=dtype,
         trust_remote_code=trust_remote_code,
         local_files_only=local_files_only,
+        tokenizer_name=target_tokenizer_name,
         adapter_path=target_adapter_path,
         load_in_4bit=target_load_in_4bit,
     )

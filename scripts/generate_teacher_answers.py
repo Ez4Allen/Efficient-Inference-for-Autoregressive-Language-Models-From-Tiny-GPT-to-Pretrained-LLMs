@@ -20,6 +20,7 @@ from src.inference.chat_runtime import QwenPairRuntime
 from src.models.runtime_config import load_qwen_pair_config
 from src.training.grounded_sft import (
     build_grounded_sft_record,
+    extract_annotation_request,
     load_annotation_records,
     write_grounded_sft,
 )
@@ -36,6 +37,12 @@ def main() -> None:
     )
     parser.add_argument("--default-game", choices=("terraria", "stardew_valley"))
     parser.add_argument("--limit", type=int)
+    parser.add_argument(
+        "--split",
+        choices=("train", "validation"),
+        default="train",
+        help="Dataset split recorded in generated SFT examples.",
+    )
     args = parser.parse_args()
 
     config = load_qwen_pair_config(args.config)
@@ -63,12 +70,13 @@ def main() -> None:
         generator=generator,
     ) as assistant:
         for index, record in enumerate(annotations, start=1):
-            game = record.get("game") or args.default_game
-            if not game:
-                raise ValueError(f"Record {index} has no game.")
-            game = "stardew_valley" if game == "stardew" else game
+            game, question = extract_annotation_request(
+                record,
+                default_game=args.default_game,
+                record_label=f"Record {index}",
+            )
             result = assistant.answer(
-                str(record["question"]),
+                question,
                 game=game,
                 player_state=record.get("player_state"),
                 include_debug=True,
@@ -81,7 +89,7 @@ def main() -> None:
                     example_id=f"teacher_{record.get('id', index)}",
                     result=result,
                     target_answer=result.answer,
-                    split="train",
+                    split=args.split,
                     category=record.get("category"),
                     required_facts=list(record.get("required_facts") or []),
                     forbidden_errors=list(record.get("forbidden_errors") or []),
@@ -92,7 +100,7 @@ def main() -> None:
             )
             print(
                 json.dumps(
-                    {"index": index, "game": game, "question": record["question"]},
+                    {"index": index, "game": game, "question": question},
                     ensure_ascii=False,
                 )
             )

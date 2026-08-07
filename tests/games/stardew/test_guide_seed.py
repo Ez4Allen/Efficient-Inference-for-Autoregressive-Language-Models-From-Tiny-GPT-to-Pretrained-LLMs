@@ -23,8 +23,8 @@ def test_offline_seed_build_and_guide_answer(tmp_path: Path) -> None:
     report = build_stardew_seed_guides(guides_root=root, verbose=False)
     assert report["status"] == "passed"
     assert report["seed"] is True
-    assert report["counts"]["documents"] == 4
-    assert report["counts"]["chunks"] >= 8
+    assert report["counts"]["documents"] == 25
+    assert report["counts"]["chunks"] == 100
 
 
 def test_assistant_auto_builds_seed_guide_database(tmp_path: Path) -> None:

@@ -43,3 +43,15 @@ def test_community_center_query_expansion():
     plan = plan_stardew_query("How should I plan the Community Center bundles?")
     assert plan.profile == "community_center"
     assert "bundle" in plan.terms
+
+
+def test_skull_cavern_query_precedes_generic_mine_expansion():
+    plan = plan_stardew_query("沙漠矿洞应该怎么准备？")
+    assert plan.profile == "skull_cavern"
+    assert plan.preferred_titles == ("Skull Cavern",)
+
+
+def test_cooking_progression_query_expansion():
+    plan = plan_stardew_query("How do I unlock more cooking recipes?")
+    assert plan.profile == "cooking"
+    assert "Cooking" in plan.preferred_titles

@@ -169,3 +169,113 @@ def test_speculative_decode_accepts_multiple_eos_ids() -> None:
     )
 
     assert result.generated_token_ids.tolist() == [[2]]
+
+
+def test_speculative_decode_prefills_draft_once_and_reuses_cache() -> None:
+    class RecordingToyCausalLM(ToyCausalLM):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.calls: list[tuple[int, bool]] = []
+
+        def __call__(self, **kwargs):
+            input_ids = kwargs["input_ids"]
+            self.calls.append(
+                (int(input_ids.shape[1]), kwargs.get("past_key_values") is not None)
+            )
+            return super().__call__(**kwargs)
+
+    draft = RecordingToyCausalLM(offset=1)
+    target = ToyCausalLM(offset=1)
+    prompt = torch.tensor([[1, 2, 3, 4, 5, 6]], dtype=torch.long)
+
+    result = greedy_speculative_decode(
+        draft,
+        target,
+        prompt,
+        max_new_tokens=11,
+        draft_tokens_per_round=4,
+    )
+
+    prompt_prefills = [call for call in draft.calls if call == (6, False)]
+    assert len(prompt_prefills) == 1
+    assert all(length == 1 for length, _ in draft.calls[1:])
+    assert all(has_cache for _, has_cache in draft.calls[1:])
+    assert result.draft_prefill_time_seconds >= 0.0
+    assert result.time_to_first_token_seconds >= result.prefill_time_seconds
+
+def test_speculative_decode_recovers_from_middle_block_mismatch() -> None:
+    class PrefixSumCausalLM:
+        def __init__(
+            self,
+            *,
+            vocab_size: int = 31,
+            perturb_at_length: int | None = None,
+        ) -> None:
+            self.vocab_size = vocab_size
+            self.perturb_at_length = perturb_at_length
+
+        def __call__(
+            self,
+            *,
+            input_ids: torch.Tensor,
+            past_key_values: ToyCache | None = None,
+            use_cache: bool = True,
+        ) -> ToyOutput:
+            del use_cache
+            prefix = (
+                past_key_values.tokens
+                if past_key_values is not None
+                else input_ids[:, :0]
+            )
+            full_tokens = torch.cat([prefix, input_ids], dim=1)
+            prefix_sum = prefix.sum(dim=1, keepdim=True)
+            running_sum = prefix_sum + input_ids.cumsum(dim=1)
+            predictions = (running_sum + 1) % self.vocab_size
+
+            if self.perturb_at_length is not None:
+                total_positions = (
+                    torch.arange(
+                        1,
+                        input_ids.shape[1] + 1,
+                        device=input_ids.device,
+                    )
+                    + prefix.shape[1]
+                )
+                perturb = total_positions == self.perturb_at_length
+                predictions = torch.where(
+                    perturb.unsqueeze(0),
+                    (predictions + 1) % self.vocab_size,
+                    predictions,
+                )
+
+            logits = torch.full(
+                (*input_ids.shape, self.vocab_size),
+                -1_000.0,
+                dtype=torch.float32,
+                device=input_ids.device,
+            )
+            logits.scatter_(2, predictions.unsqueeze(-1), 1_000.0)
+            return ToyOutput(logits=logits, past_key_values=ToyCache(full_tokens))
+
+    target = PrefixSumCausalLM()
+    # Prompt length is three. The draft's first proposal is correct, but its
+    # prediction after consuming that proposal (context length four) is wrong.
+    # Correct cache cropping lets the draft realign after target correction.
+    draft = PrefixSumCausalLM(perturb_at_length=4)
+    prompt = torch.tensor([[2, 4, 6]], dtype=torch.long)
+
+    baseline = greedy_decode(target, prompt, max_new_tokens=12)
+    speculative = greedy_speculative_decode(
+        draft,
+        target,
+        prompt,
+        max_new_tokens=12,
+        draft_tokens_per_round=4,
+    )
+
+    assert torch.equal(
+        baseline.generated_token_ids,
+        speculative.generated_token_ids,
+    )
+    assert 0 < speculative.accepted_draft_tokens < speculative.proposed_tokens
+    assert speculative.acceptance_rate > 0.5

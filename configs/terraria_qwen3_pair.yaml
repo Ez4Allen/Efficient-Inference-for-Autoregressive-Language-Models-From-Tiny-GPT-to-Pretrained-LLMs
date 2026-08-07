@@ -4,6 +4,7 @@
 models:
   draft:
     model_name_or_path: Qwen/Qwen3-0.6B
+    tokenizer_name_or_path: Qwen/Qwen3-4B
     adapter_path: null
     trust_remote_code: false
     local_files_only: false
@@ -11,6 +12,7 @@ models:
 
   target:
     model_name_or_path: Qwen/Qwen3-4B
+    tokenizer_name_or_path: Qwen/Qwen3-4B
     # A target-side PEFT adapter can be supplied after QLoRA training.
     # It must have been trained from this exact target base checkpoint.
     adapter_path: null
@@ -25,7 +27,7 @@ runtime:
 generation:
   # target: large-model autoregressive baseline
   # draft: small-model quality/latency baseline
-  # speculative: correctness-first paired baseline, not yet optimized
+  # speculative: persistent-cache correctness baseline; benchmark before claiming speedup
   engine: target
   max_new_tokens: 256
   draft_tokens_per_round: 4

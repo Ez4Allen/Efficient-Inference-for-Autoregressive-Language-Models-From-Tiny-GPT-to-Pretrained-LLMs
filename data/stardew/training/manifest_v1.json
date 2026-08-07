@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "game": "stardew_valley",
+  "dataset_version": "stardew_grounded_v1",
+  "train_count": 159,
+  "validation_count": 17,
+  "train_sha256": "9c1dbc18f7a41a36386066ed5e5da4eeb2cfae128aae44aa281ff139019db3f5",
+  "validation_sha256": "330f17b91220640922759464e611f26317f7f0423155b2995ede67c01984c524",
+  "generation_method": "deterministic_template_from_structured_catalog",
+  "formal_evaluation_files_excluded": true,
+  "generated_at": "2026-08-05T00:00:00+00:00"
+}

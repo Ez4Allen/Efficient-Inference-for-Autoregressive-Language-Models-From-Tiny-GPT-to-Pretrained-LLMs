@@ -108,7 +108,7 @@ def main() -> None:
     payload = {
         "status": "passed",
         "project": "GameGuideLM",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "stardew": {
             "record_count": stardew["record_count"],
             "integrity_check": stardew["integrity_check"],

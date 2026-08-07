@@ -31,6 +31,8 @@ class ChatGenerationResult:
     mean_tpot_seconds: float
     tokens_per_second: float
     target_forward_calls: int
+    draft_prefill_seconds: float = 0.0
+    target_prefill_seconds: float = 0.0
     draft_forward_calls: int = 0
     proposed_tokens: int = 0
     accepted_draft_tokens: int = 0
@@ -44,6 +46,7 @@ class ChatGenerationResult:
 def _endpoint_kwargs(endpoint: ModelEndpointConfig) -> dict[str, Any]:
     return {
         "model_name": endpoint.model_name_or_path,
+        "tokenizer_name": endpoint.tokenizer_name_or_path,
         "adapter_path": endpoint.adapter_path,
         "trust_remote_code": endpoint.trust_remote_code,
         "local_files_only": endpoint.local_files_only,
@@ -78,8 +81,6 @@ def _apply_chat_template(
     if encoded.ndim == 1:
         encoded = encoded.unsqueeze(0)
     return encoded
-
-
 
 
 def _eos_token_id(bundle: ModelBundle) -> int | list[int] | None:
@@ -121,7 +122,11 @@ def _autoregressive_result(
         skip_special_tokens=True,
     ).strip()
     mean_tpot = mean(output.decode_times_seconds) if output.decode_times_seconds else 0.0
-    throughput = generated_tokens / output.total_time_seconds if output.total_time_seconds > 0 else 0.0
+    throughput = (
+        generated_tokens / output.total_time_seconds
+        if output.total_time_seconds > 0
+        else 0.0
+    )
     return ChatGenerationResult(
         text=text,
         engine=engine,
@@ -132,6 +137,7 @@ def _autoregressive_result(
         mean_tpot_seconds=mean_tpot,
         tokens_per_second=throughput,
         target_forward_calls=output.target_forward_calls,
+        target_prefill_seconds=output.prefill_time_seconds,
     )
 
 
@@ -146,19 +152,28 @@ def _speculative_result(
         output.generated_token_ids[0],
         skip_special_tokens=True,
     ).strip()
-    remaining_time = max(0.0, output.total_time_seconds - output.target_prefill_time_seconds)
+    remaining_time = max(
+        0.0,
+        output.total_time_seconds - output.time_to_first_token_seconds,
+    )
     mean_tpot = remaining_time / max(1, generated_tokens - 1)
-    throughput = generated_tokens / output.total_time_seconds if output.total_time_seconds > 0 else 0.0
+    throughput = (
+        generated_tokens / output.total_time_seconds
+        if output.total_time_seconds > 0
+        else 0.0
+    )
     return ChatGenerationResult(
         text=text,
         engine="speculative",
         prompt_tokens=prompt_tokens,
         generated_tokens=generated_tokens,
         total_time_seconds=output.total_time_seconds,
-        ttft_seconds=output.target_prefill_time_seconds,
+        ttft_seconds=output.time_to_first_token_seconds,
         mean_tpot_seconds=mean_tpot,
         tokens_per_second=throughput,
         target_forward_calls=output.target_forward_calls,
+        draft_prefill_seconds=output.draft_prefill_time_seconds,
+        target_prefill_seconds=output.target_prefill_time_seconds,
         draft_forward_calls=output.draft_forward_calls,
         proposed_tokens=output.proposed_tokens,
         accepted_draft_tokens=output.accepted_draft_tokens,
@@ -276,6 +291,7 @@ class QwenPairRuntime:
                 enable_thinking=thinking,
             ).to(pair.target.device)
             _validate_context(pair.target, input_ids.shape[1], max_tokens)
+            _validate_context(pair.draft, input_ids.shape[1], max_tokens)
             output = greedy_speculative_decode(
                 pair.draft.model,
                 pair.target.model,

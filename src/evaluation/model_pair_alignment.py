@@ -84,10 +84,18 @@ def analyze_model_pair_logits(
             raise ValueError("target_token_ids must have shape [batch, positions].")
         gather_ids = target_token_ids.unsqueeze(-1)
         draft_token_logprob = (
-            F.log_softmax(draft_logits.float(), dim=-1).gather(-1, gather_ids).squeeze(-1).mean().item()
+            F.log_softmax(draft_logits.float(), dim=-1)
+            .gather(-1, gather_ids)
+            .squeeze(-1)
+            .mean()
+            .item()
         )
         target_token_logprob = (
-            F.log_softmax(target_logits.float(), dim=-1).gather(-1, gather_ids).squeeze(-1).mean().item()
+            F.log_softmax(target_logits.float(), dim=-1)
+            .gather(-1, gather_ids)
+            .squeeze(-1)
+            .mean()
+            .item()
         )
     return ModelPairAlignmentReport(
         positions=int(positions),
@@ -101,6 +109,37 @@ def analyze_model_pair_logits(
     )
 
 
+def _completion_prediction_logits(
+    model: Any,
+    input_ids: torch.Tensor,
+    *,
+    completion_start: int,
+) -> torch.Tensor:
+    """Return logits predicting only completion tokens, with one prompt prefill.
+
+    The prompt can be much longer than the completion and the vocabulary can be
+    very large. Materializing ``[batch, prompt + completion, vocabulary]``
+    logits for both models is therefore wasteful. We keep only the final prompt
+    logit (which predicts the first completion token), then run the remaining
+    completion prefix against the prompt cache.
+    """
+
+    prompt_ids = input_ids[:, :completion_start]
+    completion_ids = input_ids[:, completion_start:]
+
+    prompt_output = model(input_ids=prompt_ids, use_cache=True)
+    first_prediction = prompt_output.logits[:, -1:, :]
+    if completion_ids.shape[1] == 1:
+        return first_prediction
+
+    continuation_output = model(
+        input_ids=completion_ids[:, :-1],
+        past_key_values=prompt_output.past_key_values,
+        use_cache=False,
+    )
+    return torch.cat([first_prediction, continuation_output.logits], dim=1)
+
+
 @torch.inference_mode()
 def analyze_model_pair_on_sequence(
     draft_model: Any,
@@ -110,14 +149,21 @@ def analyze_model_pair_on_sequence(
     completion_start: int,
     top_k: int = 5,
 ) -> ModelPairAlignmentReport:
+    if input_ids.ndim != 2:
+        raise ValueError("input_ids must have shape [batch, sequence].")
     if completion_start < 1 or completion_start >= input_ids.shape[1]:
         raise ValueError("completion_start must identify at least one completion token.")
-    draft_output = draft_model(input_ids=input_ids, use_cache=False)
-    target_output = target_model(input_ids=input_ids, use_cache=False)
-    # The logit at position i predicts token i+1. To evaluate completion tokens
-    # beginning at completion_start, use logits from completion_start-1 onward.
-    draft_logits = draft_output.logits[:, completion_start - 1 : -1, :]
-    target_logits = target_output.logits[:, completion_start - 1 : -1, :]
+
+    draft_logits = _completion_prediction_logits(
+        draft_model,
+        input_ids,
+        completion_start=completion_start,
+    )
+    target_logits = _completion_prediction_logits(
+        target_model,
+        input_ids,
+        completion_start=completion_start,
+    )
     token_ids = input_ids[:, completion_start:]
     return analyze_model_pair_logits(
         draft_logits,

@@ -19,7 +19,7 @@ DEFAULT_DATABASE_PATH = STARDEW_CATALOG_ROOT / "stardew_query.sqlite3"
 DEFAULT_REPORT_PATH = STARDEW_CATALOG_ROOT / "reports" / "build_report.json"
 
 
-ALLOWED_RECORD_TYPES = {"crop", "fish", "villager", "recipe", "bundle"}
+ALLOWED_RECORD_TYPES = {"crop", "fish", "villager", "recipe", "bundle", "acquisition"}
 ALLOWED_PLATFORMS = {"all", "pc", "console", "mobile", "legacy", "unknown"}
 ALLOWED_PARSE_STATUSES = {"ok", "partial"}
 ALLOWED_BUNDLE_MODES = {"standard", "remixed", "missing_bundle"}
@@ -133,6 +133,20 @@ def validate_record(record: dict[str, Any]) -> None:
         for requirement in requirements:
             if float(requirement.get("quantity", 0)) <= 0:
                 raise ValueError(f"Invalid bundle quantity: {record['name']}")
+    elif record["record_type"] == "acquisition":
+        if not str(facts.get("entity_name", "")).strip():
+            raise ValueError(f"Acquisition record has no entity_name: {record['name']}")
+        sources = facts.get("sources") or []
+        if not isinstance(sources, list) or not sources:
+            raise ValueError(f"Acquisition record has no sources: {record['name']}")
+        for source in sources:
+            if not str(source.get("source_type", "")).strip():
+                raise ValueError(f"Acquisition source has no source_type: {record['name']}")
+            if not str(source.get("source_name", "")).strip():
+                raise ValueError(f"Acquisition source has no source_name: {record['name']}")
+            quantity = source.get("quantity")
+            if quantity is not None and float(quantity) <= 0:
+                raise ValueError(f"Invalid acquisition quantity: {record['name']}")
 
 
 def build_stardew_database(
@@ -272,6 +286,11 @@ def build_stardew_database(
         "database_path": portable_path(database_path),
         "record_count": len(records),
         "record_type_counts": dict(Counter(row["record_type"] for row in records)),
+        "acquisition_relation_count": sum(
+            len((row.get("facts") or {}).get("sources") or [])
+            for row in records
+            if row.get("record_type") == "acquisition"
+        ),
         "alias_count": len(alias_rows),
         "integrity_check": "ok",
         "foreign_key_errors": 0,

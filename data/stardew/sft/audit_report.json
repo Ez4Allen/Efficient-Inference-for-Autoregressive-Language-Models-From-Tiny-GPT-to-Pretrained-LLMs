@@ -1,0 +1,63 @@
+{
+  "input_records": 1262,
+  "accepted_before_split": 1262,
+  "rejected_records": 0,
+  "duplicate_original_ids": 0,
+  "source_warning_counts": {},
+  "status": "passed",
+  "input_path": "/content/llm_project/data/stardew/candidates.jsonl",
+  "output_dir": "/content/llm_project/data/stardew/sft",
+  "seed": 42,
+  "val_fraction": 0.1,
+  "eval_fraction": 0.1,
+  "connected_group_count": 233,
+  "largest_group_size": 373,
+  "split_counts": {
+    "train": 1010,
+    "validation": 126,
+    "eval": 126
+  },
+  "language_distribution": {
+    "en": 1262
+  },
+  "intent_distribution": {
+    "recipe_ingredients": 177,
+    "guide_progression": 85,
+    "other": 429,
+    "fish_availability": 93,
+    "item_acquisition": 350,
+    "villager_gifts": 26,
+    "crop_planning": 100,
+    "bundle_community_center": 2
+  },
+  "topic_count": 490,
+  "unique_source_pages": 405,
+  "verified_distribution": {
+    "false": 1262
+  },
+  "review_status_distribution": {
+    "pending": 1262
+  },
+  "cross_split_source_overlap": {
+    "train_validation": 0,
+    "train_eval": 0,
+    "validation_eval": 0
+  },
+  "cross_split_template_overlap": {
+    "train_validation": 0,
+    "train_eval": 0,
+    "validation_eval": 0
+  },
+  "output_sha256": {
+    "train.jsonl": "55d0a277e8ef489133d2a3aadae3cfb07a242939d52d6b5df9ec813c4f86750e",
+    "validation.jsonl": "eb14bdf9099651775ff6aa60ad6f87a1483146c07c144a87b0343e68642f3f5c",
+    "eval.jsonl": "78cc46d29ee9052ae9cd5f4d3927869aa4650816dcb7cef60336a3871bac30fc",
+    "candidates_clean.jsonl": "e512045941fb222f9036a852b425b0fb180338defe4818b848134cb7f169f834",
+    "rejected.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "notes": [
+    "All legacy AI-assisted records are pending human review and verified=false.",
+    "These development splits are not the formal evaluation benchmark.",
+    "Source-page and normalized-template connected components are kept within a single split."
+  ]
+}

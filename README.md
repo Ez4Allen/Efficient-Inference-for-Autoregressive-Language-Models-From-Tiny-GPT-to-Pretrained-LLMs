@@ -2,15 +2,16 @@
 
 **A grounded multi-game language model for reliable game-guide question answering, evidence-aware LoRA training, and draft/target model analysis.**
 
-GameGuideLM treats mutable game knowledge as evidence rather than asking a language model to memorize an entire Wiki. A game plug-in retrieves structured facts and guide excerpts, the shared Qwen model turns that evidence into a natural answer, and a conservative validator rejects unsupported generations. The same grounded prompts are also used to study the behavior of a Qwen3-0.6B draft model against a Qwen3-4B target model.
+GameGuideLM treats mutable game knowledge as evidence rather than asking a language model to memorize an entire Wiki. A game plug-in retrieves structured facts and guide excerpts, the target model turns that evidence into a natural answer, and a conservative validator rejects unsupported generations. The same grounded prompts are used to study two speculative-decoding draft tracks: a reliable Qwen3-0.6B baseline and a custom `TinyQwenDraft` implemented and trained from scratch against a fixed Qwen3-4B target.
 
 The final course-project emphasis is **LLM modeling and grounded generation**:
 
 1. evidence-conditioned multi-game prompting;
-2. Qwen3 target/draft inference using one shared model loader;
-3. optional multi-game LoRA for citation-following and answer style;
-4. optional target-teacher LoRA for improving draft/target token alignment;
-5. token-level model-pair analysis and speculative-decoding experiments.
+2. one shared runtime for target-only, draft-only, and speculative generation;
+3. optional multi-game LoRA for citation following and answer style;
+4. target-teacher sequence adaptation for both pretrained and custom drafts;
+5. a Qwen-token-compatible decoder-only draft model implemented in PyTorch;
+6. token-level alignment analysis and end-to-end speculative-decoding experiments.
 
 The databases are not the final model. They are the verifiable memory and evaluation workload used by the model.
 
@@ -32,18 +33,19 @@ Terraria is the full reference implementation:
 
 ### Stardew Valley
 
-Stardew Valley is the second game plug-in and proves that the model layer is not Terraria-specific:
+Stardew Valley is the completed second game plug-in and the primary demonstration workload:
 
-- a compact tracked starter snapshot of 31 high-confidence facts;
-- crops with season and growth-deadline calculation;
-- fish with season/weather/time/location availability windows;
-- villagers and loved gifts;
-- crafting recipes;
-- Standard Community Center bundles;
-- a separate MediaWiki guide pipeline and Stardew-specific query expansion;
-- reviewed bilingual validation/evaluation seed files.
+- 505 versioned structured records: 41 crops, 55 fish, 34 villagers, 117 recipes, 30 Standard Bundles, and 228 acquisition entities;
+- 317 structured acquisition relations;
+- player-state-aware crop deadlines and fish availability;
+- bilingual entity aliases, routing, answers, and safe refusals;
+- 25 project-authored offline guide pages producing 100 searchable chunks;
+- a 100-case bilingual deterministic regression suite with controlled intent/status distributions;
+- 176 evidence-conditioned training records split 159/17 with the formal evaluation files excluded;
+- a cleaned audit of 1,262 legacy AI-assisted SFT candidates, all honestly retained as `pending` and `verified=false`;
+- a self-contained HTML showcase in `demo/stardew_showcase.html`.
 
-The compact Stardew snapshot is intentionally replaceable. The teammate-maintained full Stardew catalog can extend the same `StardewQueryStore` and `StardewFactService` contract without changing Qwen, LoRA training, or speculative decoding.
+This is a course-release snapshot, not a claim that every page or mechanic in the full Wiki is represented. Standard Bundle coverage is complete for the snapshot; Remixed Bundle requests are explicitly returned as `partial` rather than inferred. The benchmark passes engineering validation but remains marked for independent human source review before it can be called human-approved.
 
 ---
 
@@ -70,7 +72,8 @@ recipes, gifts, drops)             mechanics, walkthroughs)
                          ▼
               Evidence-conditioned prompt
                          ▼
-        Qwen3-4B target / Qwen3-0.6B draft
+      Qwen3-4B target / compatible draft model
+       (Qwen3-0.6B or custom TinyQwenDraft)
                          ▼
           Citation and unsupported-claim validator
                          ▼
@@ -97,18 +100,30 @@ Qwen/Qwen3-4B
 
 The target model is responsible for final answer quality. The first baseline runs the unmodified post-trained checkpoint. A multi-game evidence-aware LoRA is optional and should be trained only after the deterministic retrieval/evaluation pipeline is stable.
 
-### Draft model
+### Reliable draft baseline
 
 ```text
 Qwen/Qwen3-0.6B
 ```
 
-The draft is from the same Qwen3 family and is validated to use an identical tokenizer. It supports:
+The pretrained draft remains the reliable baseline. The runtime loads the exact target tokenizer for both endpoints and verifies the complete token-to-ID mapping before speculative generation. It supports:
 
 - independent small-model generation;
 - training-free speculative decoding;
 - optional sequence-level teacher LoRA using answers generated by the fixed 4B target;
 - token-level agreement, entropy, top-k overlap, and JS-divergence analysis.
+
+### Custom from-scratch draft
+
+```text
+TinyQwenDraft -> Qwen/Qwen3-4B
+```
+
+`src/models/tiny_qwen_draft/` contains a compact decoder-only language model written directly in PyTorch. It uses the target tokenizer, tied embeddings, RMSNorm, grouped-query attention, rotary position embeddings, SwiGLU, and a persistent crop-able KV cache. Its purpose is not to replace the target: it proposes tokens that the target verifies.
+
+The custom model is trained on validated target-generated continuations, not on Shakespeare and not on the formal evaluation files. It is a research draft, so its usefulness must be established by acceptance rate and end-to-end latency rather than training loss. The Qwen3-0.6B baseline is retained even if the custom model is trained successfully.
+
+See `docs/TINY_QWEN_DRAFT.md` for the architecture, tokenizer contract, training workflow, and benchmark protocol.
 
 ### Why no MoE was added
 
@@ -128,7 +143,7 @@ python -m pytest -q
 Current offline test result:
 
 ```text
-140 passed
+171 passed
 ```
 
 Run the complete offline release check (compilation, tests, and both
@@ -145,6 +160,21 @@ pip install -r requirements-training.txt
 ```
 
 ---
+
+
+### Build the complete Stardew release
+
+```bash
+python scripts/build_stardew_release.py
+```
+
+That one command regenerates the structured snapshot, cleans the legacy SFT pool, rebuilds both SQLite stores, runs the 100-case deterministic regression suite, validates release contracts, writes the demo outputs and HTML dashboard, and runs the full test suite.
+
+Open the self-contained showcase locally:
+
+```text
+demo/stardew_showcase.html
+```
 
 ## Build the knowledge backends
 
@@ -266,7 +296,7 @@ python scripts/chat_gameguide.py \
   "进入困难模式后该做什么？"
 ```
 
-The speculative implementation is a correctness-first baseline. It preserves target greedy output but is not presented as an optimized speed result until cache reuse and repeated warm benchmark runs are completed.
+The speculative implementation is a correctness-first greedy decoder with persistent draft and target KV caches. Both models prefill once, rejected suffixes are cropped after a mismatch, and correction or bonus tokens are synchronized into both caches. It preserves target-only greedy output, but no speedup is claimed until warm repeated GPU benchmarks show that saved target work exceeds draft overhead.
 
 ---
 
@@ -278,14 +308,12 @@ The existing `src/training/train_sft.py` remains the only QLoRA training impleme
 
 ```bash
 python scripts/build_grounded_sft.py \
-  --input \
-    data/terraria/terraria_train_v1.jsonl \
-    data/stardew/evaluation/stardew_validation_v1.jsonl \
+  --input data/terraria/terraria_train_v1.jsonl \
   --default-game terraria \
   --output data/gameguide/grounded_train.jsonl
 ```
 
-For mixed input files, add a `game` field to every annotation rather than relying on `--default-game`.
+For mixed input files, add a `game` field to every annotation rather than relying on `--default-game`. Add the reviewed Stardew **training** split only after the Stardew data-cleanup PR is complete. Never use `stardew_validation_v1.jsonl` or `stardew_eval_v1.jsonl` as training input.
 
 ### 2. Train the 4B evidence-following adapter
 
@@ -298,28 +326,45 @@ This experiment measures whether LoRA improves citation adherence, refusal behav
 
 ### 3. Optional draft teacher adaptation
 
-Generate validated target answers:
+Generate validated target answers from reviewed **training** annotations:
 
 ```bash
 python scripts/generate_teacher_answers.py \
-  --input data/stardew/evaluation/stardew_validation_v1.jsonl \
-  --output data/gameguide/target_teacher_train.jsonl
+  --input data/terraria/terraria_train_v1.jsonl \
+  --output data/gameguide/target_teacher_train.jsonl \
+  --split train
 ```
 
-Train the 0.6B draft:
+Create a separate teacher-validation file from held-out validation annotations:
+
+```bash
+python scripts/generate_teacher_answers.py \
+  --input data/terraria/terraria_validation_v1.jsonl \
+  --output data/gameguide/target_teacher_validation.jsonl \
+  --split validation
+```
+
+Train the pretrained 0.6B draft adapter:
 
 ```bash
 python -m src.training.train_sft \
   --config configs/gameguidelm_qwen3_0_6b_teacher_lora.yaml
 ```
 
-This is sequence-level draft alignment. A future logits-distillation experiment would require a separate loss implementation and is not falsely represented as part of the current SFT trainer.
+Train the custom from-scratch draft on the same target-generated continuations:
+
+```bash
+python scripts/train_tiny_qwen_draft.py \
+  --config configs/tiny_qwen_draft.yaml
+```
+
+This is sequence-level target adaptation. A future logits-distillation experiment would require a separate KL-based loss implementation and is not represented as part of either current trainer.
 
 ---
 
 ## Model-pair analysis
 
-Analyze Qwen3-0.6B and Qwen3-4B on the exact same grounded completion:
+Analyze either compatible draft and Qwen3-4B on the exact same grounded completion. Use `configs/gameguidelm_qwen3_pair.yaml` for the pretrained baseline or `configs/gameguidelm_tiny_qwen_pair.yaml` after training the custom draft:
 
 ```bash
 python scripts/analyze_qwen_pair.py \
@@ -354,7 +399,7 @@ python scripts/benchmark_gameguidelm.py \
   --max-new-tokens 128
 ```
 
-The study records output hashes, grounding validation, TTFT, TPOT, latency, tokens/s, forward calls, acceptance, exact speculative/target text match, environment metadata, and the evidence-budget configuration. Checkpoint download and load time are excluded from warm generation metrics.
+The study records output hashes, grounding validation, TTFT, TPOT, latency, tokens/s, forward calls, acceptance, exact speculative/target text match, environment metadata, and the evidence-budget configuration. Checkpoint download and load time are excluded from warm generation metrics. Run the command once with `configs/gameguidelm_qwen3_pair.yaml` and once with `configs/gameguidelm_tiny_qwen_pair.yaml`; do not compare two drafts that were measured under different prompts, output limits, or warm-up settings.
 
 ---
 
@@ -443,17 +488,17 @@ Compare token agreement, entropy, top-k overlap, and divergence by:
 - prompt length;
 - factual names/numbers versus ordinary connective text.
 
-### Experiment D — Speculative decoding
+### Experiment D — Pretrained speculative baseline
 
 ```text
 Qwen3-4B autoregressive
 vs
-Qwen3-0.6B → Qwen3-4B speculative
+Qwen3-0.6B -> Qwen3-4B speculative
 ```
 
 Measure exact-token correctness, TTFT, TPOT, end-to-end latency, target calls, draft calls, acceptance rate, accepted tokens per round, and peak memory.
 
-### Experiment E — Optional draft adaptation
+### Experiment E — Optional pretrained-draft adaptation
 
 ```text
 Base Qwen3-0.6B draft
@@ -462,6 +507,18 @@ Qwen3-0.6B teacher-answer LoRA draft
 ```
 
 Use the same fixed Qwen3-4B target. The useful result is not lower training loss; it is improved token agreement, speculative acceptance, and end-to-end latency.
+
+### Experiment F — Custom draft study
+
+```text
+Qwen3-4B autoregressive
+vs
+TinyQwenDraft -> Qwen3-4B speculative
+vs
+Qwen3-0.6B -> Qwen3-4B speculative
+```
+
+The custom draft is evaluated as a speed/acceptance trade-off: fewer parameters and lower draft cost may be offset by lower token agreement. Test multiple draft lengths and prompt-length buckets, and report slowdowns as well as speedups.
 
 ---
 
@@ -474,9 +531,9 @@ src/games/stardew/           Stardew facts, player-state logic, guides, and dete
 src/assistant/               Existing Terraria-specific assistant implementation
 src/knowledge/               Terraria structured catalog and FactService
 src/retrieval/               Shared MediaWiki import, cleaning, chunking, quality, and FTS infrastructure
-src/models/                  One shared Hugging Face/PEFT model loader
-src/inference/               Autoregressive, paired-Qwen, and speculative decoding
-src/training/                Shared SFT/QLoRA trainer and grounded-dataset utilities
+src/models/                  Shared loader plus the custom TinyQwenDraft implementation
+src/inference/               Autoregressive and persistent-cache speculative decoding
+src/training/                SFT/QLoRA plus custom-draft sequence-adaptation training
 src/evaluation/              Multi-game QA and draft/target model analysis
 scripts/                     Build, chat, train-data, evaluate, and model-analysis entry points
 data/terraria/               Terraria snapshots, manifests, and reviewed QA
@@ -484,13 +541,14 @@ data/stardew/                Stardew compact snapshot, guide manifest, and revie
 data/gameguide/              Generated evidence-conditioned model-training data
 ```
 
-Older TinyGPT, GPT-2 benchmark, and serving-simulation code remains as supporting coursework and implementation history. It is not part of the final GameGuideLM claim. See `docs/SUPPORTING_EXPERIMENTS.md`.
+The Shakespeare character-level TinyGPT, GPT-2 benchmark, and serving-simulation code remain as supporting coursework and implementation history. Shakespeare is no longer the project's main small-model experiment; the custom Qwen-token-compatible draft is. See `docs/SUPPORTING_EXPERIMENTS.md`.
 
 ---
 
 ## Final project statement
 
-> **GameGuideLM is a grounded multi-game language model that separates mutable game knowledge from model parameters, trains Qwen to follow retrieved evidence, analyzes a small/large Qwen pair at the token-distribution level, and uses the same realistic Terraria and Stardew workloads for reliable QA and speculative-decoding experiments.**
+> **GameGuideLM is a grounded multi-game language-model system that separates mutable game knowledge from model parameters, trains models to follow retrieved evidence, implements a Qwen-token-compatible draft from scratch, and compares pretrained and custom drafts against the same Qwen3-4B target on realistic Terraria and Stardew workloads.**
+
 ---
 
 ## Release documentation
@@ -500,7 +558,8 @@ Older TinyGPT, GPT-2 benchmark, and serving-simulation code remains as supportin
 - `docs/EXPERIMENTS.md`: model, LoRA, and speculative-decoding experiment matrix;
 - `docs/MODEL_STUDY.md`: prompt-budget, warm benchmark, alignment, and reporting protocol;
 - `docs/MODEL_TRAINING.md`: evidence-aware target and draft training plan;
+- `docs/TINY_QWEN_DRAFT.md`: custom draft architecture, tokenizer contract, training, and benchmarking;
 - `docs/STARDEW_MODULE.md`: Stardew capability and extension contract;
 - `docs/REPRODUCIBILITY.md`: offline, online-corpus, and GPU experiment protocol;
-- `docs/DELIVERY.md`: exact v1.0.0 scope, validation state, and claim boundaries;
-- `RELEASE_NOTES.md`: v1.0.0 scope and reproducibility statement.
+- `docs/DELIVERY.md`: exact v1.1.0 scope, validation state, and claim boundaries;
+- `RELEASE_NOTES.md`: v1.1.0 scope and reproducibility statement.

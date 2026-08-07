@@ -9,7 +9,18 @@ def test_database_integrity_and_counts(stardew_database):
     connection = sqlite3.connect(stardew_database)
     assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
-    assert connection.execute("SELECT COUNT(*) FROM records").fetchone()[0] == 31
+    assert connection.execute("SELECT COUNT(*) FROM records").fetchone()[0] == 505
+    counts = dict(connection.execute(
+        "SELECT record_type, COUNT(*) FROM records GROUP BY record_type"
+    ).fetchall())
+    assert counts == {
+        "acquisition": 228,
+        "bundle": 30,
+        "crop": 41,
+        "fish": 55,
+        "recipe": 117,
+        "villager": 34,
+    }
     connection.close()
 
 
@@ -122,7 +133,8 @@ def test_bundle_mode_is_not_silently_mixed(stardew_database):
         standard = service.bundle("River Fish Bundle", bundle_mode="standard")
         remixed = service.bundle("River Fish Bundle", bundle_mode="remixed")
     assert standard["status"] == "found"
-    assert remixed["status"] == "not_found"
+    assert remixed["status"] == "partial"
+    assert remixed["facts"]["available_bundle_mode"] == "standard"
 
 
 def test_record_validation_rejects_missing_provenance(stardew_database):
