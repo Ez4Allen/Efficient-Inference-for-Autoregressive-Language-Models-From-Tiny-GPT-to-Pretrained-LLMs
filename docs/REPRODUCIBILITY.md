@@ -8,12 +8,12 @@ python -m pytest -q
 python scripts/validate_release.py --skip-pytest
 ```
 
-GameGuideLM v1.1.0 has 184 offline tests. They cover the original project,
+GameGuideLM v1.2.0 has 206 offline tests. They cover the original project,
 the completed Stardew release contract, SFT cleanup, bilingual deterministic
 behavior, guide retrieval, the custom draft configuration and model, answer-only
 training, tokenizer compatibility, loader integration, and persistent speculative
 cache handling. The release metadata files at the repository root describe this
-same v1.1.0 snapshot.
+same v1.2.0 source revision.
 
 `validate_release.py` compiles the source, rebuilds the Terraria and Stardew
 structured stores from tracked snapshots, and runs deterministic smoke queries.
@@ -166,3 +166,25 @@ Always record:
 - draft/target prefill, TTFT, TPOT, latency, tokens/s, and peak memory;
 - proposed and accepted tokens, acceptance, and forward calls;
 - verification mode and measured token-ID equality with target-only greedy decoding.
+
+
+## Professor-feedback custom-model study
+
+Install the optional standard metric dependency and run the controlled study:
+
+```bash
+pip install -r requirements-metrics.txt
+python scripts/run_custom_model_study.py \
+  --config configs/custom_model_study.yaml \
+  --stage all
+```
+
+For Colab, use `notebooks/05_custom_model_study.ipynb`. The pipeline is
+resumable and keeps corpora, teacher continuations, checkpoints, raw rows, and
+report artifacts under the configured ignored output directory.
+
+Before GPU execution, the CI smoke-builds the decontaminated corpus and prompt
+pool. Formal evaluation rows are retained only as `split=held_out`; teacher
+generation accepts only `train` or `validation`. The final run must record the
+commit hash, Qwen3-0.6B model/tokenizer revision, hardware/software versions,
+seed, context/output limits, and generated artifact hashes.

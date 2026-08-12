@@ -176,6 +176,19 @@ until GPU training and warm benchmarking are completed.
 
 ## Stardew course-release state
 
-The tracked Stardew snapshot now contains 505 structured records and 317 acquisition relations. The offline guide seed contains 25 pages and produces 100 chunks. The deterministic regression suite contains 100 examples with a 50/50 English-Chinese split and controlled `found`, `needs_context`, `partial`, and `not_found` behavior. The current deterministic implementation passes all 100 regression cases and the repository passes 184 offline tests.
+The tracked Stardew snapshot now contains 505 structured records and 317 acquisition relations. The offline guide seed contains 25 pages and produces 100 chunks. The deterministic regression suite contains 100 examples with a 50/50 English-Chinese split and controlled `found`, `needs_context`, `partial`, and `not_found` behavior. The current deterministic implementation passes all 100 regression cases and the repository passes 206 offline tests.
 
 These are engineering regression results. The 100 benchmark records remain `machine_validated` with `human_review_required=true`; no reviewer identity or approval has been fabricated. Qwen/QLoRA quality gains and speculative-decoding speedups remain GPU experiments until checkpoints are trained and warm benchmarks are executed.
+
+
+## Professor-feedback custom-model extension
+
+The original serving result is preserved, and the team-built 43.5M architecture
+is additionally evaluated as a controlled Qwen3-0.6B student. The fixed
+architecture is trained under three paths: scratch distillation, lightweight
+project-local causal pretraining followed by distillation, and the same model
+followed by grounded GameGuide adaptation. Held-out evaluation reports standard
+reference metrics, teacher-distribution alignment, exact acceptance, bilingual
+and task slices, and auxiliary mode-collapse diagnostics. This directly tests
+what the custom model learned without changing the production Qwen3-4B grounded
+answer pipeline.

@@ -285,6 +285,7 @@ def build_sft_example(
     tokenizer: PreTrainedTokenizerBase,
     max_length: int,
     record_id: str,
+    truncation_mode: str = "right",
 ) -> dict[str, torch.Tensor]:
     """
     Convert one chat conversation into model training tensors.
@@ -299,6 +300,12 @@ def build_sft_example(
     if max_length <= 0:
         raise ValueError(
             "max_length must be greater than zero"
+        )
+
+    truncation_mode = str(truncation_mode).strip().casefold()
+    if truncation_mode not in {"right", "preserve_assistant"}:
+        raise ValueError(
+            "truncation_mode must be 'right' or 'preserve_assistant'."
         )
 
     full_ids = _apply_chat_template_ids(
@@ -367,8 +374,16 @@ def build_sft_example(
             assistant_start:assistant_end
         ]
 
-    input_ids = full_ids[:max_length]
-    labels = labels[:max_length]
+    if len(full_ids) <= max_length or truncation_mode == "right":
+        input_ids = full_ids[:max_length]
+        labels = labels[:max_length]
+    else:
+        # Sequence-level distillation supervises only assistant tokens.  When a
+        # long evidence prompt exceeds the context budget, preserve the answer
+        # and the most recent prompt suffix instead of silently truncating every
+        # supervised token.
+        input_ids = full_ids[-max_length:]
+        labels = labels[-max_length:]
     attention_mask = [1] * len(input_ids)
 
     supervised_token_count = sum(
@@ -411,10 +426,12 @@ class SFTJsonlDataset(Dataset):
         path: str | Path,
         tokenizer: PreTrainedTokenizerBase,
         max_length: int = 512,
+        truncation_mode: str = "right",
     ) -> None:
         self.path = Path(path)
         self.tokenizer = tokenizer
         self.max_length = max_length
+        self.truncation_mode = str(truncation_mode).strip().casefold()
 
         records = load_jsonl(self.path)
 
@@ -440,6 +457,7 @@ class SFTJsonlDataset(Dataset):
                 tokenizer=self.tokenizer,
                 max_length=self.max_length,
                 record_id=record_id,
+                truncation_mode=self.truncation_mode,
             )
 
             self.examples.append(example)

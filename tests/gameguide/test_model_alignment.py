@@ -16,6 +16,10 @@ def test_identical_logits_have_full_agreement_and_zero_js():
     assert report.top1_agreement == 1.0
     assert report.mean_topk_overlap == 1.0
     assert report.mean_js_divergence < 1e-7
+    assert report.mean_entropy_gap == 0.0
+    assert 0.0 < report.unique_draft_top1_ratio <= 1.0
+    assert report.unique_draft_top1_ratio == report.unique_target_top1_ratio
+    assert 0.0 < report.mean_target_top1_probability_draft <= 1.0
 
 
 def test_alignment_detects_different_top1():

@@ -8,7 +8,17 @@ on:
 jobs:
   offline-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - "tests/assistant"
+          - "tests/gameguide"
+          - "tests/games"
+          - "tests/knowledge"
+          - "tests/retrieval"
+          - "tests/test_*.py"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -17,7 +27,37 @@ jobs:
           cache: pip
       - name: Install test dependencies
         run: python -m pip install -r requirements-dev.txt
-      - name: Run offline test suite
-        run: python -m pytest -q
+      - name: Run offline test shard
+        shell: bash
+        run: python -m pytest -q ${{ matrix.shard }}
+
+  release-validation:
+    needs: offline-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install validation dependencies
+        run: python -m pip install -r requirements-dev.txt
       - name: Validate tracked structured snapshots
         run: python scripts/validate_release.py --skip-pytest
+      - name: Smoke-build decontaminated custom-model data
+        shell: bash
+        run: |
+          python scripts/build_tiny_student_corpus.py \
+            --output /tmp/tiny_student_corpus.jsonl \
+            --manifest /tmp/tiny_student_corpus_manifest.json \
+            --validation-fraction 0.1 \
+            --seed 42
+          python scripts/build_student_prompt_pool.py \
+            --train-input data/stardew/sft/train.jsonl data/terraria/terraria_train_v1.jsonl \
+            --validation-input data/stardew/sft/validation.jsonl data/terraria/terraria_validation_v1.jsonl \
+            --eval-input data/stardew/evaluation/stardew_eval_v1.jsonl data/terraria/terraria_eval.jsonl \
+            --output /tmp/student_prompt_pool.jsonl \
+            --manifest /tmp/student_prompt_pool_manifest.json \
+            --augment-stardew-zh \
+            --seed 42

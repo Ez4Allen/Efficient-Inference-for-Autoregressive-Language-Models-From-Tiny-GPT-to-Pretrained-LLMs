@@ -19,6 +19,10 @@ class ModelPairAlignmentReport:
     mean_js_divergence: float
     target_token_logprob_draft: float
     target_token_logprob_target: float
+    unique_draft_top1_ratio: float
+    unique_target_top1_ratio: float
+    mean_entropy_gap: float
+    mean_target_top1_probability_draft: float
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -73,10 +77,25 @@ def analyze_model_pair_logits(
     draft_argmax = draft_logits.argmax(dim=-1)
     target_argmax = target_logits.argmax(dim=-1)
     top1 = (draft_argmax == target_argmax).float().mean().item()
+    unique_draft_top1_ratio = (
+        torch.unique(draft_argmax).numel() / float(positions)
+    )
+    unique_target_top1_ratio = (
+        torch.unique(target_argmax).numel() / float(positions)
+    )
     overlap = topk_overlap(draft_logits, target_logits, k=top_k).mean().item()
     draft_entropy = entropy_from_logits(draft_logits).mean().item()
     target_entropy = entropy_from_logits(target_logits).mean().item()
+    entropy_gap = abs(draft_entropy - target_entropy)
     js = js_divergence_from_logits(draft_logits, target_logits).mean().item()
+    draft_probabilities = F.softmax(draft_logits.float(), dim=-1)
+    mean_target_top1_probability_draft = (
+        draft_probabilities
+        .gather(-1, target_argmax.unsqueeze(-1))
+        .squeeze(-1)
+        .mean()
+        .item()
+    )
     draft_token_logprob = float("nan")
     target_token_logprob = float("nan")
     if target_token_ids is not None:
@@ -106,6 +125,12 @@ def analyze_model_pair_logits(
         mean_js_divergence=float(js),
         target_token_logprob_draft=float(draft_token_logprob),
         target_token_logprob_target=float(target_token_logprob),
+        unique_draft_top1_ratio=float(unique_draft_top1_ratio),
+        unique_target_top1_ratio=float(unique_target_top1_ratio),
+        mean_entropy_gap=float(entropy_gap),
+        mean_target_top1_probability_draft=float(
+            mean_target_top1_probability_draft
+        ),
     )
 
 

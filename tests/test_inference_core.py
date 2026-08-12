@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pytest
 import torch
 
-from src.inference.autoregressive import greedy_decode
+from src.inference.autoregressive import greedy_decode, sample_decode
 from src.inference.speculative import greedy_speculative_decode
 
 
@@ -54,6 +54,35 @@ class ToyCausalLM:
         )
         logits.scatter_(2, predictions.unsqueeze(-1), 1_000.0)
         return ToyOutput(logits=logits, past_key_values=ToyCache(full_tokens))
+
+
+
+def test_sample_decode_is_reproducible_with_seeded_generator() -> None:
+    model = ToyCausalLM(offset=1)
+    prompt = torch.tensor([[2, 5]], dtype=torch.long)
+
+    first_generator = torch.Generator(device=prompt.device).manual_seed(123)
+    second_generator = torch.Generator(device=prompt.device).manual_seed(123)
+
+    first = sample_decode(
+        model,
+        prompt,
+        max_new_tokens=4,
+        temperature=0.8,
+        top_p=0.9,
+        generator=first_generator,
+    )
+    second = sample_decode(
+        model,
+        prompt,
+        max_new_tokens=4,
+        temperature=0.8,
+        top_p=0.9,
+        generator=second_generator,
+    )
+
+    assert torch.equal(first.generated_token_ids, second.generated_token_ids)
+    assert first.generated_token_ids.tolist() == [[6, 7, 8, 9]]
 
 
 def test_greedy_decode_uses_cache_and_generates_expected_tokens() -> None:

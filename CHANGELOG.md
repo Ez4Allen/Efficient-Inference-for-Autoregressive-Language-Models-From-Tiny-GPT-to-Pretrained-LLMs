@@ -1,11 +1,28 @@
 # Changelog
 
-## Unreleased — speculative correctness hardening
+## 1.2.0 — Professor-feedback engineering release
 
-- Added explicit `exact` and `block` greedy speculative-verification modes.
-- Added token-ID exact-match measurement and a real-checkpoint block-consistency diagnostic.
-- Added regression coverage for query-length-sensitive target behavior and cache rollback.
-- Expanded the offline test suite from 171 to 184 tests.
+- Added explicit `exact` and `block` greedy speculative-verification modes,
+  token-ID exact-match measurement, and real-checkpoint consistency diagnostics.
+- Added a controlled 43.5M-parameter `TinyQwenStudent` study with lightweight
+  project-local causal pretraining, Qwen3-0.6B sequence distillation, and
+  grounded game adaptation.
+- Added decontaminated held-out prompt handling, deterministic Chinese prompt
+  augmentation, and bilingual alias-bridge pretraining documents.
+- Added standard reference metrics: ROUGE-L, chrF, token F1, and optional
+  multilingual BERTScore.
+- Added explicit answer-validation traces and documentation of the pass formula.
+- Added prompt/answer min, median, p90, p95, p99, and maximum-size auditing.
+- Added output-diversity, repetition, entropy-gap, top-k, JS-divergence, teacher
+  likelihood, reference-quality, and exact speculative-acceptance metrics with
+  language/domain/category/prompt-length slices.
+- Added answer-preserving SFT truncation and checkpoint chaining between
+  pretraining, distillation, and domain-adaptation stages.
+- Split online grounded inference from offline custom-model training in the
+  architecture documentation and added a one-command professor-feedback
+  post-processing pipeline.
+- Expanded the offline test suite from 184 to 206 tests and sharded CI by
+  subsystem for deterministic offline validation.
 
 ## 1.1.0 — Stardew release and TinyQwenDraft foundation
 

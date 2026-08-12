@@ -94,3 +94,38 @@ def test_distillation_split_validation_and_file_hash(tmp_path: Path) -> None:
     records = _validate_distillation_split(source, expected_split="train")
     assert records[0]["id"] == "train-1"
     assert len(_file_sha256(source)) == 64
+
+
+def test_tiny_qwen_training_config_supports_checkpoint_chaining(tmp_path: Path) -> None:
+    train = tmp_path / "train.jsonl"
+    train.write_text('{}\n', encoding="utf-8")
+    checkpoint = tmp_path / "checkpoint"
+    checkpoint.mkdir()
+    config_path = tmp_path / "draft_chain.yaml"
+    config_path.write_text(
+        f"""
+model:
+  target_model_name_or_path: Qwen/Qwen3-0.6B
+  tokenizer_name_or_path: Qwen/Qwen3-0.6B
+  initial_checkpoint: {checkpoint}
+  hidden_size: 16
+  intermediate_size: 32
+  num_hidden_layers: 2
+  num_attention_heads: 4
+  num_key_value_heads: 2
+  max_position_embeddings: 64
+data:
+  train_path: {train}
+  max_length: 32
+  truncation_mode: preserve_assistant
+training:
+  output_dir: {tmp_path / 'output'}
+  stage_name: pretrain_then_distill
+  max_steps: 5
+""",
+        encoding="utf-8",
+    )
+    config = load_tiny_qwen_draft_training_config(config_path)
+    assert config.initial_checkpoint == checkpoint.resolve()
+    assert config.stage_name == "pretrain_then_distill"
+    assert config.truncation_mode == "preserve_assistant"

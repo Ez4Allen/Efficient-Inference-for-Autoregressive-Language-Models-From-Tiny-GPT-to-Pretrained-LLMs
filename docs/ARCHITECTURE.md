@@ -261,3 +261,57 @@ and exact target/speculative output equality.
 - Generated Wiki corpora and model weights are built or downloaded locally.
 - A trained custom draft is not useful merely because its loss decreases.
 - Speed is claimed only from warm repeated end-to-end measurements.
+
+## 10. Two pipelines that must not be conflated
+
+### 10.1 Online grounded inference
+
+```mermaid
+flowchart LR
+  Q[Question + game + player state] --> P[Game plug-in and intent router]
+  P --> SF[Structured FactService]
+  P --> GR[Guide retrieval]
+  SF --> E[Bounded evidence bundle]
+  GR --> E
+  E --> T[Qwen3-4B grounded generation]
+  T --> V[Citation / number / length validator]
+  V --> A[Validated answer or deterministic fallback]
+```
+
+Retrieval determines which facts may appear in the answer.  The target model is
+responsible for wording, and the validator checks whether that wording remains
+inside the evidence boundary.
+
+### 10.2 Offline custom-model study
+
+```mermaid
+flowchart LR
+  C[Train-only local corpus] --> P[Lightweight causal pretraining]
+  Q[Train-only prompt pool] --> T[Qwen3-0.6B greedy teacher]
+  P --> D[Sequence distillation]
+  T --> D
+  D --> G[Grounded game adaptation]
+  D --> E[Alignment / diversity evaluation]
+  G --> E
+```
+
+This pipeline does not change the online retrieval logic.  It studies what the
+team-built 43.5M model learns from pretraining, teacher alignment, and domain
+adaptation.
+
+## 11. Prompt and answer size reporting
+
+Configured limits and observed sizes are different quantities and are both
+reported.  `scripts/audit_prompt_answer_sizes.py` emits count, mean, median,
+p90, p95, p99, and maximum for prompt and generated tokens by condition.  The
+report must state:
+
+```text
+evidence-source limit
+evidence-character limit
+generation-token cap
+answer-character guard
+observed prompt p95/max
+observed answer p95/max
+TinyQwenStudent architectural context and training sequence length
+```

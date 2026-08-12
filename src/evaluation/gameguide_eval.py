@@ -16,6 +16,51 @@ _CITATION_PATTERN = re.compile(r"\[(S\d+)\]")
 
 
 @dataclass(slots=True)
+class FactMatchTrace:
+    label: str
+    matched: bool
+    match_mode: str
+    token_recall: float | None
+    threshold: float | None
+    alternatives: list[dict[str, Any]] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class AnswerValidationTrace:
+    example_id: str
+    answer: str
+    expected_status: str
+    actual_status: str
+    expected_intent: str | None
+    actual_intent: str
+    required_fact_traces: list[FactMatchTrace]
+    forbidden_error_traces: list[FactMatchTrace]
+    required_fact_coverage: float
+    forbidden_error_rate: float
+    citation_required: bool
+    citation_present: bool
+    citation_valid: bool
+    unsupported_numeric_claims: int
+    pass_threshold: float
+    passed: bool
+    pass_formula: str
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = asdict(self)
+        payload["required_fact_traces"] = [
+            trace.to_dict() for trace in self.required_fact_traces
+        ]
+        payload["forbidden_error_traces"] = [
+            trace.to_dict() for trace in self.forbidden_error_traces
+        ]
+        return payload
+
+
+
+@dataclass(slots=True)
 class GameGuideExampleScore:
     example_id: str
     game: str
@@ -128,6 +173,118 @@ def _contains(text: str, value: Any) -> bool:
     recall = len(expected_tokens & answer_tokens) / len(expected_tokens)
     threshold = 1.0 if len(expected_tokens) <= 4 else 0.75
     return recall >= threshold
+
+
+def _contains_trace(text: str, value: Any) -> FactMatchTrace:
+    if isinstance(value, dict):
+        alternatives = value.get("any_of")
+        if isinstance(alternatives, list):
+            traces = [_contains_trace(text, candidate) for candidate in alternatives]
+            return FactMatchTrace(
+                label=json.dumps(value, ensure_ascii=False),
+                matched=any(trace.matched for trace in traces),
+                match_mode="any_of",
+                token_recall=None,
+                threshold=None,
+                alternatives=[trace.to_dict() for trace in traces],
+            )
+        required = value.get("all_of")
+        if isinstance(required, list):
+            traces = [_contains_trace(text, candidate) for candidate in required]
+            return FactMatchTrace(
+                label=json.dumps(value, ensure_ascii=False),
+                matched=all(trace.matched for trace in traces),
+                match_mode="all_of",
+                token_recall=None,
+                threshold=None,
+                alternatives=[trace.to_dict() for trace in traces],
+            )
+
+    expected = _fact_text(value)
+    normalized_expected = _normalize_match_text(expected)
+    normalized_answer = _normalize_match_text(text)
+    if normalized_expected and normalized_expected in normalized_answer:
+        return FactMatchTrace(
+            label=expected,
+            matched=True,
+            match_mode="normalized_substring",
+            token_recall=1.0,
+            threshold=1.0,
+        )
+
+    expected_tokens = _semantic_tokens(expected)
+    answer_tokens = _semantic_tokens(text)
+    if not expected_tokens:
+        return FactMatchTrace(
+            label=expected,
+            matched=False,
+            match_mode="empty_expected_tokens",
+            token_recall=0.0,
+            threshold=None,
+        )
+    recall = len(expected_tokens & answer_tokens) / len(expected_tokens)
+    threshold = 1.0 if len(expected_tokens) <= 4 else 0.75
+    return FactMatchTrace(
+        label=expected,
+        matched=recall >= threshold,
+        match_mode="semantic_token_recall",
+        token_recall=round(recall, 6),
+        threshold=threshold,
+    )
+
+
+def build_answer_validation_trace(
+    annotation: dict[str, Any],
+    result: GameGuideResult,
+) -> AnswerValidationTrace:
+    """Explain every component of the project pass/fail decision.
+
+    This is intentionally a presentation/report aid.  It calls the same scoring
+    function used by the benchmark and exposes the required-fact matches,
+    forbidden-error checks, citation checks, numeric-validation failures, and
+    final conjunction used to assign ``passed``.
+    """
+
+    required = list(
+        annotation.get("must_include")
+        or annotation.get("required_facts")
+        or []
+    )
+    forbidden = list(
+        annotation.get("must_not_include")
+        or annotation.get("forbidden_errors")
+        or []
+    )
+    required_traces = [_contains_trace(result.answer, item) for item in required]
+    forbidden_traces = [_contains_trace(result.answer, item) for item in forbidden]
+    score = score_gameguide_result(annotation, result)
+    return AnswerValidationTrace(
+        example_id=score.example_id,
+        answer=result.answer,
+        expected_status=str(annotation.get("expected_status") or "found"),
+        actual_status=result.status,
+        expected_intent=(
+            str(annotation.get("intent"))
+            if annotation.get("intent") is not None
+            else None
+        ),
+        actual_intent=result.intent,
+        required_fact_traces=required_traces,
+        forbidden_error_traces=forbidden_traces,
+        required_fact_coverage=score.required_fact_coverage,
+        forbidden_error_rate=score.forbidden_error_rate,
+        citation_required=score.citation_required,
+        citation_present=score.citation_present,
+        citation_valid=score.citation_valid,
+        unsupported_numeric_claims=score.unsupported_numeric_claims,
+        pass_threshold=0.75,
+        passed=score.passed,
+        pass_formula=(
+            "status_match AND intent_match AND required_fact_coverage >= 0.75 "
+            "AND forbidden_error_rate == 0 AND citation_valid "
+            "AND unsupported_numeric_claims == 0"
+        ),
+    )
 
 
 def _runtime_from_generation(generation: dict[str, Any]) -> dict[str, Any]:

@@ -1,0 +1,4 @@
+-r requirements-training.txt
+
+# Optional standard semantic benchmark requested during the project review.
+bert-score>=0.3.13

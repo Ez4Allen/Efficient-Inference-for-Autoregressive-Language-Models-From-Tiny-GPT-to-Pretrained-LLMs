@@ -1,0 +1,88 @@
+version: 1
+
+study:
+  output_dir: results/custom_model_study
+  seed: 42
+
+teacher:
+  model_name_or_path: Qwen/Qwen3-0.6B
+  tokenizer_name_or_path: Qwen/Qwen3-0.6B
+  local_files_only: false
+  device: cuda
+  dtype: auto
+  max_new_tokens: 96
+
+student:
+  hidden_size: 256
+  intermediate_size: 768
+  num_hidden_layers: 6
+  num_attention_heads: 4
+  num_key_value_heads: 2
+  max_position_embeddings: 4096
+  rope_theta: 1000000.0
+  rms_norm_eps: 1.0e-6
+  attention_dropout: 0.0
+  initializer_range: 0.02
+
+corpus:
+  validation_fraction: 0.05
+  exclude_eval_entities: true
+
+pretraining:
+  max_length: 512
+  stride: 512
+  max_steps: 1000
+  gradient_accumulation_steps: 16
+  learning_rate: 0.0003
+  weight_decay: 0.01
+  logging_steps: 25
+  eval_steps: 100
+  eval_batches: 20
+  save_steps: 250
+
+sequence_distillation:
+  max_length: 1024
+  truncation_mode: preserve_assistant
+  max_steps: 1000
+  gradient_accumulation_steps: 8
+  learning_rate: 0.0003
+  weight_decay: 0.01
+  logging_steps: 25
+  eval_steps: 100
+  eval_batches: 20
+  save_steps: 250
+
+# Grounded adaptation is intentionally shorter than general distillation.
+game_adaptation:
+  max_length: 1536
+  truncation_mode: preserve_assistant
+  max_steps: 500
+  gradient_accumulation_steps: 8
+  learning_rate: 0.00015
+  weight_decay: 0.01
+  logging_steps: 25
+  eval_steps: 50
+  eval_batches: 20
+  save_steps: 100
+  evidence_sources: 4
+  evidence_characters: 8000
+
+prompt_pool:
+  max_per_category: null
+  augment_stardew_zh: true
+  augmentation_limit: null
+  augmentation_validation_fraction: 0.1
+
+evaluation:
+  # Formal evaluation prompts are retained as a held-out split and never used
+  # by teacher-data generation or student training.
+  split: held_out
+  limit: null
+  max_new_tokens: 64
+  top_k: 5
+  speculative: true
+  draft_tokens_per_round: 4
+  diversity_prompts: 12
+  samples_per_prompt: 5
+  temperature: 0.8
+  top_p: 0.9

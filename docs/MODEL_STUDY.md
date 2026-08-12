@@ -1,5 +1,12 @@
 # GameGuideLM Model Study Protocol
 
+> **Current custom-model plan.** The frozen Qwen3-4B RAG and speculative
+> results remain part of the report.  In response to presentation feedback, the
+> new controlled custom-model study aligns the fixed 43.5M architecture with
+> Qwen3-0.6B and compares scratch distillation, project-local pretraining plus
+> distillation, and grounded game adaptation.  See
+> `docs/CUSTOM_MODEL_STUDY.md`.
+
 This document defines the model-centric experiments for the course project. The
 knowledge stores are held fixed and act as a reproducible workload. Research
 variables are evidence, target adaptation, draft model, draft adaptation, and

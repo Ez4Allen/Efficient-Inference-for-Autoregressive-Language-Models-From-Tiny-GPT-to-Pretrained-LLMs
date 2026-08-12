@@ -1,3 +1,5 @@
+> **Historical note (v1.1.0):** This file documents the original TinyQwenDraft-to-Qwen3-4B implementation milestone. The current professor-feedback study is documented in `docs/CUSTOM_MODEL_STUDY.md` and `PROFESSOR_FEEDBACK_IMPLEMENTATION_SUMMARY.md`.
+
 # TinyQwenDraft Implementation Summary
 
 ## 1. What changed

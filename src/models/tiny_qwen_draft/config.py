@@ -44,6 +44,9 @@ class TinyQwenDraftConfig:
 
     tokenizer_name_or_path: str | None = None
     target_model_name_or_path: str | None = None
+    teacher_model_name_or_path: str | None = None
+    training_stage: str | None = None
+    parent_checkpoint: str | None = None
     tokenizer_sha256: str | None = None
     chat_template_sha256: str | None = None
 
