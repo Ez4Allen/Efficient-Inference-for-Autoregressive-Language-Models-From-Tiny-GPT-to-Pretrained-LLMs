@@ -141,7 +141,7 @@ Expected offline result:
 
 ```text
 100 / 100 deterministic Stardew regression cases passed
-184 repository tests passed
+204 repository tests passed
 SQLite integrity: ok
 Release readiness: engineering_passed_human_review_pending
 ```

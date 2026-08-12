@@ -43,9 +43,19 @@ def main() -> None:
         default="train",
         help="Dataset split recorded in generated SFT examples.",
     )
+    parser.add_argument(
+        "--target-source",
+        help=(
+            "Provenance label written to generated records. Defaults to a "
+            "model-derived label from the configured target checkpoint."
+        ),
+    )
     args = parser.parse_args()
 
     config = load_qwen_pair_config(args.config)
+    target_reference = config.target.model_name_or_path
+    target_slug = str(target_reference).rstrip("/").split("/")[-1]
+    target_source = args.target_source or f"validated_{target_slug}_teacher"
     evidence_config = EvidenceSelectionConfig(
         policy=config.grounding.evidence_policy,
         max_sources=config.grounding.max_evidence_sources,
@@ -95,7 +105,7 @@ def main() -> None:
                     forbidden_errors=list(record.get("forbidden_errors") or []),
                     prompt_mode=config.grounding.prompt_mode,
                     evidence_config=evidence_config,
-                    target_source="validated_qwen3_4b_teacher",
+                    target_source=target_source,
                 )
             )
             print(

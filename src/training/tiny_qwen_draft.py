@@ -36,8 +36,11 @@ class TinyQwenDraftTrainingConfig:
     train_path: Path
     validation_path: Path | None
     output_dir: Path
+    initial_checkpoint: Path | None = None
+    stage_name: str = "sequence_distillation"
 
     max_length: int = 512
+    truncation_mode: str = "preserve_assistant"
     hidden_size: int = 256
     intermediate_size: int = 768
     num_hidden_layers: int = 6
@@ -74,6 +77,12 @@ class TinyQwenDraftTrainingConfig:
             raise ValueError("target_model_name_or_path is required.")
         if self.max_length < 2:
             raise ValueError("max_length must be at least 2.")
+        if self.truncation_mode not in {"right", "preserve_assistant"}:
+            raise ValueError(
+                "truncation_mode must be 'right' or 'preserve_assistant'."
+            )
+        if not self.stage_name.strip():
+            raise ValueError("stage_name cannot be empty.")
         if self.max_length > self.max_position_embeddings:
             raise ValueError(
                 "max_length cannot exceed max_position_embeddings."
@@ -144,6 +153,7 @@ def load_tiny_qwen_draft_training_config(
     validation_path = (
         resolve_project_path(validation_value) if validation_value else None
     )
+    initial_value = model.get("initial_checkpoint")
 
     config = TinyQwenDraftTrainingConfig(
         tokenizer_name_or_path=_required_text(
@@ -164,7 +174,14 @@ def load_tiny_qwen_draft_training_config(
         output_dir=resolve_project_path(
             _required_text(training, "output_dir", "training")
         ),
+        initial_checkpoint=(
+            resolve_project_path(initial_value) if initial_value else None
+        ),
+        stage_name=str(training.get("stage_name", "sequence_distillation")).strip(),
         max_length=int(data.get("max_length", 512)),
+        truncation_mode=str(
+            data.get("truncation_mode", "preserve_assistant")
+        ).strip().casefold(),
         hidden_size=int(model.get("hidden_size", 256)),
         intermediate_size=int(model.get("intermediate_size", 768)),
         num_hidden_layers=int(model.get("num_hidden_layers", 6)),
@@ -363,6 +380,10 @@ def train_tiny_qwen_draft(
         raise FileNotFoundError(
             f"Validation data not found: {config.validation_path}"
         )
+    if config.initial_checkpoint is not None and not config.initial_checkpoint.exists():
+        raise FileNotFoundError(
+            f"Initial checkpoint not found: {config.initial_checkpoint}"
+        )
 
     train_records = _validate_distillation_split(
         config.train_path,
@@ -420,6 +441,11 @@ def train_tiny_qwen_draft(
         unk_token_id=tokenizer.unk_token_id,
         tokenizer_name_or_path=config.tokenizer_name_or_path,
         target_model_name_or_path=config.target_model_name_or_path,
+        teacher_model_name_or_path=config.target_model_name_or_path,
+        training_stage=config.stage_name,
+        parent_checkpoint=(
+            str(config.initial_checkpoint) if config.initial_checkpoint else None
+        ),
         tokenizer_sha256=tokenizer_sha256(tokenizer),
         chat_template_sha256=chat_template_sha256(tokenizer),
     )
@@ -429,12 +455,14 @@ def train_tiny_qwen_draft(
         config.train_path,
         tokenizer,
         max_length=config.max_length,
+        truncation_mode=config.truncation_mode,
     )
     validation_dataset = (
         SFTJsonlDataset(
             config.validation_path,
             tokenizer,
             max_length=config.max_length,
+            truncation_mode=config.truncation_mode,
         )
         if config.validation_path is not None
         else None
@@ -463,7 +491,44 @@ def train_tiny_qwen_draft(
         else None
     )
 
-    model = TinyQwenDraft(model_config).to(device)
+    if config.initial_checkpoint is None:
+        model = TinyQwenDraft(model_config)
+        initialization = "random_initialization"
+    else:
+        model = TinyQwenDraft.from_pretrained(
+            config.initial_checkpoint,
+            map_location="cpu",
+        )
+        architecture_fields = (
+            "vocab_size",
+            "hidden_size",
+            "intermediate_size",
+            "num_hidden_layers",
+            "num_attention_heads",
+            "num_key_value_heads",
+            "max_position_embeddings",
+        )
+        mismatches = {
+            field: (getattr(model.config, field), getattr(model_config, field))
+            for field in architecture_fields
+            if getattr(model.config, field) != getattr(model_config, field)
+        }
+        if mismatches:
+            raise ValueError(
+                "Initial checkpoint architecture mismatch: "
+                + json.dumps(mismatches, sort_keys=True)
+            )
+        if model.config.tokenizer_sha256 != model_config.tokenizer_sha256:
+            raise ValueError("Initial checkpoint tokenizer fingerprint mismatch.")
+        model.config.target_model_name_or_path = config.target_model_name_or_path
+        model.config.teacher_model_name_or_path = config.target_model_name_or_path
+        model.config.training_stage = config.stage_name
+        model.config.parent_checkpoint = str(config.initial_checkpoint)
+        model.config.tokenizer_name_or_path = config.tokenizer_name_or_path
+        model.config.chat_template_sha256 = model_config.chat_template_sha256
+        model.config.validate()
+        initialization = str(config.initial_checkpoint)
+    model = model.to(device)
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=config.learning_rate,
@@ -572,6 +637,8 @@ def train_tiny_qwen_draft(
     )
     report = {
         "status": "passed",
+        "stage": config.stage_name,
+        "initialization": initialization,
         "model_type": model_config.model_type,
         "target_model_name_or_path": config.target_model_name_or_path,
         "tokenizer_name_or_path": config.tokenizer_name_or_path,
@@ -603,9 +670,9 @@ def train_tiny_qwen_draft(
         "training_config": _serialize_training_config(config),
         "history": history,
         "warning": (
-            "This is sequence-level target adaptation from random initialization. "
-            "Report speculative acceptance and latency; training loss alone is "
-            "not evidence of a useful draft model."
+            "This is sequence-level teacher adaptation. Report model-pair "
+            "alignment, diversity/generalization slices, speculative acceptance, "
+            "and latency; training loss alone is not evidence of a useful model."
         ),
     }
     write_json(config.output_dir / "training_report.json", report)

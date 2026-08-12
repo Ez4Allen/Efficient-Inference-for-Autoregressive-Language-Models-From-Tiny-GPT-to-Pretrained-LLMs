@@ -1,10 +1,10 @@
 {
   "status": "engineering_passed_human_review_pending",
   "project": "GameGuideLM",
-  "version": "1.1.0",
-  "validated_on": "2026-08-07",
+  "version": "1.2.0",
+  "validated_on": "2026-08-11",
   "python_test_suite": {
-    "passed": 184,
+    "passed": 206,
     "failed": 0
   },
   "release_builder": {
@@ -45,7 +45,8 @@
   "model_experiments": {
     "qwen_gpu_training": "not_executed",
     "tiny_qwen_draft_training": "not_executed",
-    "speculative_gpu_benchmark": "not_executed"
+    "speculative_gpu_benchmark": "not_executed",
+    "custom_model_study": "offline_code_data_contracts_passed_gpu_execution_external"
   },
   "claim_boundaries": [
     "The 100/100 result measures deterministic regression behavior against generated expectations, not an independent model benchmark.",
@@ -60,6 +61,16 @@
     "colab_demo_notebook": true,
     "final_report": false,
     "presentation_deck": false,
-    "model_weights": false
+    "model_weights": false,
+    "custom_model_colab_notebook": true,
+    "standard_reference_metrics": true
+  },
+  "custom_model_study_offline_smoke": {
+    "status": "passed",
+    "pretraining_documents": 15291,
+    "approximate_tokens": 5744177,
+    "prompt_pool_records": 1690,
+    "prompt_pool_held_out": 90,
+    "formal_evaluation_split": "held_out_only"
   }
 }

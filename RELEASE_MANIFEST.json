@@ -1,27 +1,31 @@
 {
   "project": "GameGuideLM",
-  "version": "1.1.0",
-  "release_date": "2026-08-07",
-  "release_name": "Stardew Grounded Assistant and TinyQwenDraft Code Release",
+  "version": "1.2.0",
+  "release_date": "2026-08-11",
+  "release_name": "Professor-Feedback Engineering and Custom-Model Study Release",
   "research_focus": [
     "grounded multi-game language modeling",
     "versioned structured and guide retrieval",
     "bilingual player-state-aware question answering",
     "evidence-aware Qwen adaptation",
     "custom Qwen-compatible draft modeling",
-    "persistent-cache speculative decoding"
+    "persistent-cache speculative decoding",
+    "custom-model pretraining and Qwen3-0.6B distillation",
+    "held-out diversity and generalization evaluation",
+    "transparent answer validation and standard reference metrics"
   ],
   "default_models": {
     "draft_baseline": "Qwen/Qwen3-0.6B",
     "target": "Qwen/Qwen3-4B",
-    "custom_draft": "TinyQwenDraft"
+    "custom_draft": "TinyQwenDraft / TinyQwenStudent (shared 43.5M implementation)"
   },
   "offline_validation": {
-    "pytest_tests": 184,
+    "pytest_tests": 206,
     "pytest_status": "passed",
     "stardew_release_builder": "python scripts/build_stardew_release.py",
     "stardew_release_status": "passed",
-    "validated_on": "2026-08-07"
+    "validated_on": "2026-08-11",
+    "custom_model_data_smoke": "passed"
   },
   "terraria_snapshot": {
     "resolved_references": 14353,
@@ -67,13 +71,28 @@
     "trained_lora_adapters": false,
     "trained_custom_draft": false,
     "code_patch": true,
-    "colab_demo_notebook": true
+    "colab_demo_notebook": true,
+    "custom_model_study_notebook": true,
+    "professor_feedback_metrics": true
   },
   "claim_boundaries": [
     "The 100 Stardew cases are deterministic engineering regression candidates and still require independent human source review.",
     "The Stardew snapshot is a defined course-release scope rather than a complete Wiki import.",
     "The offline guide seed contains project-authored summaries with explicit provenance flags.",
     "No Qwen or TinyQwenDraft checkpoint was trained during the offline packaging run.",
-    "Speculative speedup is an experiment protocol, not a measured release claim."
-  ]
+    "Speculative speedup is an experiment protocol, not a measured release claim.",
+    "The v1.2 custom-model ablation requires external GPU execution; this source package validates the code, data contracts, and report pipeline but does not fabricate its metrics."
+  ],
+  "custom_model_study_offline_smoke": {
+    "pretraining_documents": 15291,
+    "approximate_tokens": 5744177,
+    "pretraining_train_documents": 13740,
+    "pretraining_validation_documents": 1551,
+    "prompt_pool_records": 1690,
+    "prompt_pool_train": 1416,
+    "prompt_pool_validation": 184,
+    "prompt_pool_held_out": 90,
+    "prompt_pool_english": 1346,
+    "prompt_pool_chinese": 344
+  }
 }

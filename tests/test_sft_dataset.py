@@ -103,3 +103,21 @@ def test_data_collator_pads_ids_masks_and_labels() -> None:
         [IGNORE_INDEX, 2, 3],
         [IGNORE_INDEX, 5, IGNORE_INDEX],
     ]
+
+
+def test_preserve_assistant_truncation_keeps_supervised_suffix():
+    tokenizer = FakeChatTokenizer()
+    messages = [
+        {"role": "system", "content": "s" * 30},
+        {"role": "user", "content": "u" * 30},
+        {"role": "assistant", "content": "answer"},
+    ]
+    example = build_sft_example(
+        messages,
+        tokenizer,
+        max_length=12,
+        record_id="long",
+        truncation_mode="preserve_assistant",
+    )
+    assert (example["labels"] != IGNORE_INDEX).any()
+    assert len(example["input_ids"]) == 12

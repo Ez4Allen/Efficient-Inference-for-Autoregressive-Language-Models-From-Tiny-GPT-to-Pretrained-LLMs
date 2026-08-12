@@ -119,3 +119,14 @@ adapter overhead must be measured end to end.
 A lower training loss does not prove that the custom draft is useful. The final
 question is whether it reduces target work enough to compensate for its own
 runtime and memory cost.
+
+
+## Professor-feedback custom-model extension
+
+The original target-only/RAG/speculative results are frozen.  The additional
+model study uses Qwen3-0.6B as the teacher for the team-built 43.5M student and
+compares three controlled training paths under a fixed tokenizer and
+architecture.  Formal evaluation prompts are marked `held_out` and never enter
+teacher-data generation.  Standard reference metrics, observed size maxima,
+validation traces, and diversity/generalization slices are produced by the
+new scripts documented in `docs/PROFESSOR_FEEDBACK_RESPONSE.md`.

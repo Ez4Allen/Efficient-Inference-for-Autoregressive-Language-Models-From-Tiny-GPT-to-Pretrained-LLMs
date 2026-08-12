@@ -16,6 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.gameguide import __version__
 from src.games.stardew.database_builder import build_stardew_database
 from src.games.stardew.fact_service import StardewFactService
 from src.knowledge.pipeline import build_terraria_knowledge
@@ -108,7 +109,7 @@ def main() -> None:
     payload = {
         "status": "passed",
         "project": "GameGuideLM",
-        "version": "1.1.0",
+        "version": __version__,
         "stardew": {
             "record_count": stardew["record_count"],
             "integrity_check": stardew["integrity_check"],

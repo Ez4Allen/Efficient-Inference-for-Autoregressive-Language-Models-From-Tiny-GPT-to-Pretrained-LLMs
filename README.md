@@ -2,7 +2,7 @@
 
 **A grounded multi-game language model for reliable game-guide question answering, evidence-aware LoRA training, and draft/target model analysis.**
 
-GameGuideLM treats mutable game knowledge as evidence rather than asking a language model to memorize an entire Wiki. A game plug-in retrieves structured facts and guide excerpts, the target model turns that evidence into a natural answer, and a conservative validator rejects unsupported generations. The same grounded prompts are used to study two speculative-decoding draft tracks: a reliable Qwen3-0.6B baseline and a custom `TinyQwenDraft` implemented and trained from scratch against a fixed Qwen3-4B target.
+GameGuideLM treats mutable game knowledge as evidence rather than asking a language model to memorize an entire Wiki. A game plug-in retrieves structured facts and guide excerpts, the target model turns that evidence into a natural answer, and a conservative validator rejects unsupported generations. The serving study compares Qwen3-0.6B and a custom `TinyQwenDraft` against Qwen3-4B; the professor-feedback extension evaluates the same 43.5M architecture as `TinyQwenStudent` under controlled Qwen3-0.6B pretraining/distillation ablations.
 
 The final course-project emphasis is **LLM modeling and grounded generation**:
 
@@ -130,6 +130,55 @@ The custom model is trained on validated target-generated continuations, not on 
 
 See `docs/TINY_QWEN_DRAFT.md` for the architecture, tokenizer contract, training workflow, and benchmark protocol.
 
+### Professor-feedback custom-model study
+
+The same 43.5M-parameter architecture is now evaluated as `TinyQwenStudent`
+against a fixed Qwen3-0.6B teacher.  The controlled study isolates three stages:
+
+```text
+scratch_distill
+project-local causal pretraining -> distillation
+pretraining -> distillation -> grounded game adaptation
+```
+
+The model architecture and tokenizer stay fixed.  Evaluation reports validation
+perplexity, top-1/top-k agreement, Jensen-Shannon divergence, entropy gap,
+teacher-token likelihood, exact speculative acceptance, ROUGE-L, chrF, token
+F1, language/domain/category slices, and sampled-output diversity diagnostics.
+This directly addresses generalization and mode-collapse questions without
+misrepresenting creative diversity as the main objective of a draft/student
+model.
+
+Run the resumable study with:
+
+```bash
+python scripts/run_custom_model_study.py --stage all \
+  --config configs/custom_model_study.yaml
+```
+
+See `docs/CUSTOM_MODEL_STUDY.md` and
+`docs/PROFESSOR_FEEDBACK_RESPONSE.md`.
+
+Build the decontaminated corpus/prompt manifests without a GPU:
+
+```bash
+python scripts/build_tiny_student_corpus.py \
+  --output results/custom_model_study/data/pretraining_corpus.jsonl \
+  --manifest results/custom_model_study/data/pretraining_manifest.json
+
+python scripts/build_student_prompt_pool.py \
+  --train-input data/stardew/sft/train.jsonl data/terraria/terraria_train_v1.jsonl \
+  --validation-input data/stardew/sft/validation.jsonl data/terraria/terraria_validation_v1.jsonl \
+  --eval-input data/stardew/evaluation/stardew_eval_v1.jsonl data/terraria/terraria_eval.jsonl \
+  --output results/custom_model_study/data/prompt_pool.jsonl \
+  --manifest results/custom_model_study/data/prompt_pool_manifest.json \
+  --augment-stardew-zh
+```
+
+Formal evaluation records are written only with `split=held_out`; teacher-data
+generation selects `train` or `validation`, so the same prompt pool cannot
+silently leak evaluation questions into optimization.
+
 ### Why no MoE was added
 
 A new MoE architecture would require pretraining or substantial supervised routing data and would confound the course project's main comparisons. The final design uses explicit game plug-ins for evidence routing and a shared Qwen model. This is simpler, measurable, and compatible with the existing checkpoints. MoE can remain a future extension rather than an unvalidated project feature.
@@ -148,7 +197,7 @@ python -m pytest -q
 Current offline test result:
 
 ```text
-184 passed
+206 passed
 ```
 
 Run the complete offline release check (compilation, tests, and both
@@ -580,5 +629,8 @@ The Shakespeare character-level TinyGPT, GPT-2 benchmark, and serving-simulation
 - `docs/TINY_QWEN_DRAFT.md`: custom draft architecture, tokenizer contract, training, and benchmarking;
 - `docs/STARDEW_MODULE.md`: Stardew capability and extension contract;
 - `docs/REPRODUCIBILITY.md`: offline, online-corpus, and GPU experiment protocol;
-- `docs/DELIVERY.md`: exact v1.1.0 scope, validation state, and claim boundaries;
-- `RELEASE_NOTES.md`: v1.1.0 scope and reproducibility statement.
+- `docs/DELIVERY.md`: exact v1.2.0 scope, validation state, and claim boundaries;
+- `docs/PROFESSOR_FEEDBACK_RESPONSE.md`: feedback-to-code/report artifact map;
+- `docs/CUSTOM_MODEL_STUDY.md`: controlled TinyQwenStudent ablation and leakage contract;
+- `PROFESSOR_FEEDBACK_IMPLEMENTATION_SUMMARY.md`: concise delivery and validation summary;
+- `RELEASE_NOTES.md`: v1.2.0 scope and reproducibility statement.
